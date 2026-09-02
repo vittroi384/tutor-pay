@@ -1,0 +1,1 @@
+ALTER TABLE "lectures" ADD COLUMN "tax_type" text DEFAULT '사업소득' NOT NULL;

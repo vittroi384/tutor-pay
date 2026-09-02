@@ -1,0 +1,15 @@
+# 로컬 개발용: DB만 컨테이너로 띄우고 앱은 `npm run dev` 로 실행
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tutorpay
+      POSTGRES_USER: tutorpay
+      POSTGRES_PASSWORD: tutorpay
+      TZ: Asia/Seoul
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_tutorpay_local:/var/lib/postgresql/data
+volumes:
+  pgdata_tutorpay_local:

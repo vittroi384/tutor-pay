@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Noto Sans KR",
+    "Malgun Gothic", system-ui, sans-serif;
+  /* 브랜드 색 — 아코스쿨 로고의 주황(#F5A800)을 기준으로 만든 단계. bg-brand-500 / text-brand-700 / ring-brand-500 처럼 사용 */
+  --color-brand-50: #fff8e5;
+  --color-brand-100: #ffeec2;
+  --color-brand-200: #ffdf8a;
+  --color-brand-300: #ffcc52;
+  --color-brand-400: #ffb81f;
+  --color-brand-500: #f5a800;
+  --color-brand-600: #d48f00;
+  --color-brand-700: #a86f00;
+  --color-brand-800: #7d5200;
+  --color-brand-900: #573900;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 text-[14px] antialiased;
+}
+
+/* 공용 컴포넌트 클래스 — @layer components 안에 두어야 Tailwind 유틸리티(w-44, !px-1 등)가 이 기본값을 덮어쓸 수 있음 */
+@layer components {
+  /* 표 기본 밀도 (7.1) */
+  table.dense th,
+  table.dense td {
+    @apply px-2 py-1.5 align-middle;
+  }
+  table.dense thead th {
+    @apply text-[12px] font-medium text-slate-500 bg-slate-50 border-b border-slate-200 whitespace-nowrap;
+  }
+  table.dense tbody td {
+    @apply border-b border-slate-100;
+  }
+  table.dense tbody tr:hover td {
+    @apply bg-slate-50/70;
+  }
+  /* 긴 표를 카드 안에서 자체 스크롤: 머리글(thead)은 위에 붙어 있고, 페이지 전체가 길어지지 않는다.
+     높이는 쓰는 곳에서 max-h-[...] 로 지정. 가로 스크롤(모바일)도 이 컨테이너가 담당. */
+  .table-scroll {
+    @apply overflow-auto overscroll-contain;
+  }
+  .table-scroll table {
+    border-collapse: separate; /* collapse 면 고정 머리글의 밑줄이 사라지는 브라우저가 있어 분리형으로 */
+    border-spacing: 0;
+  }
+  .table-scroll thead th {
+    @apply sticky top-0 z-10;
+  }
+  .num {
+    @apply tabular-nums text-right whitespace-nowrap;
+  }
+
+  /* 폼 요소 공통 */
+  .input {
+    @apply w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[14px] text-slate-800 shadow-xs
+      focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 disabled:bg-slate-100 disabled:text-slate-400;
+  }
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[13px] font-medium whitespace-nowrap
+      transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply bg-brand-500 border-brand-500 text-slate-900 hover:bg-brand-400 hover:border-brand-400;
+  }
+  .btn-secondary {
+    @apply bg-white border-slate-300 text-slate-700 hover:bg-slate-50;
+  }
+  .btn-danger {
+    @apply bg-white border-rose-300 text-rose-700 hover:bg-rose-50;
+  }
+  .btn-ghost {
+    @apply border-transparent text-slate-600 hover:bg-slate-100;
+  }
+  .btn-sm {
+    @apply px-2 py-1 text-[12px];
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-4 ring-1 ring-inset whitespace-nowrap;
+  }
+  .badge {
+    @apply inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold leading-4 whitespace-nowrap;
+  }
+  .card {
+    @apply rounded-lg border border-slate-200 bg-white shadow-xs;
+  }
+  .label {
+    @apply block text-[12px] font-medium text-slate-600 mb-1;
+  }
+}
+
+/* 인쇄: 명세서만 출력 (A4 세로, 표가 한 페이지 폭에 들어가도록 축소) */
+@media print {
+  .table-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+  html,
+  body {
+    background: white !important;
+    font-size: 11px;
+    height: auto !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-root {
+    display: block !important;
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .card {
+    box-shadow: none !important;
+    border: none !important;
+  }
+  /* 가로 스크롤 래퍼와 최소 폭 해제 → 표가 페이지 폭에 맞춰 줄어든다 */
+  .print-root .overflow-x-auto {
+    overflow: visible !important;
+  }
+  .print-root table {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 10.5px !important;
+    table-layout: auto;
+  }
+  .print-root table.dense th,
+  .print-root table.dense td {
+    padding: 3px 4px !important;
+  }
+  .print-root thead {
+    display: table-header-group; /* 페이지가 넘어가도 머리글 반복 */
+  }
+  .print-root tr {
+    break-inside: avoid;
+  }
+  /* 칩은 색 배경 대신 얇은 테두리로 (흑백 인쇄 대비) */
+  .print-root .chip,
+  .print-root .badge {
+    background: transparent !important;
+    color: #334155 !important;
+    box-shadow: inset 0 0 0 1px #94a3b8 !important;
+    padding: 0 4px !important;
+    font-size: 9.5px !important;
+  }
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+}
+.print-only {
+  display: none;
+}

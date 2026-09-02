@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tutorpay
+      POSTGRES_USER: tutorpay
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "127.0.0.1:5432:5432" # 서버 안(localhost)에서만 열림 — 인터넷 노출 아님. PC에서는 SSH 터널로 접속 (README '데이터 직접 보기')
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tutorpay -d tutorpay"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://tutorpay:${DB_PASSWORD}@db:5432/tutorpay
+      AUTH_DISABLED: ${AUTH_DISABLED:-false}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
+      AUTH_URL: https://${DOMAIN}
+      AUTH_TRUST_HOST: "true"
+      ALLOWED_EMAILS: ${ALLOWED_EMAILS}
+      TZ: Asia/Seoul
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    # 운영 서버는 80번을 다른 서비스가 쓰고 있어 443만 사용.
+    # 80도 caddy 로 넘길 수 있게 되면 '- "80:80"' 을 추가하고 Caddyfile 의 global/tls 블록을 지우면
+    # http→https 자동 리다이렉트까지 붙는다.
+    ports:
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      DOMAIN2: ${DOMAIN2:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

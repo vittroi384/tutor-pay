@@ -1,0 +1,16 @@
+# 443(HTTPS)만 사용하는 구성 — 인증서는 TLS-ALPN 챌린지로 발급 (80번 포트 불필요)
+{
+	auto_https disable_redirects
+}
+# 기본 도메인(tutorpay.example.com)과 보조 도메인(DuckDNS)을 함께 서비스 — 각각 인증서 자동 발급
+{$DOMAIN}, {$DOMAIN2} {
+	tls {
+		issuer acme {
+			disable_http_challenge
+		}
+	}
+	# 한 번 https 로 접속한 브라우저는 이후 이 도메인을 항상 https 로 열게 함 (http→개인 프로젝트로 새는 것 방지)
+	header Strict-Transport-Security "max-age=31536000"
+	encode gzip
+	reverse_proxy app:3000
+}
