@@ -15,7 +15,7 @@ ALTER TABLE "grades" ADD COLUMN "color" text DEFAULT 'slate' NOT NULL;--> statem
 INSERT INTO "pay_types" ("code","sort","role_based","manual","color","is_active") VALUES
  ('관내',1,true,false,'sky',true),
  ('관외',2,true,false,'violet',true),
- ('아코센터',3,true,false,'teal',true),
+ ('센터',3,true,false,'teal',true),
  ('기관지급',4,false,false,'slate',true),
  ('주(주말교육)',5,false,false,'orange',true),
  ('교구정리',6,false,false,'lime',true),
@@ -29,4 +29,4 @@ WHERE l.pay_type IS NOT NULL AND l.pay_type NOT IN (SELECT code FROM "pay_types"
 ON CONFLICT ("code") DO NOTHING;
 --> statement-breakpoint
 -- 기본 등급 색
-UPDATE "grades" SET "color" = CASE "code" WHEN 'S등급' THEN 'amber' WHEN 'A등급' THEN 'teal' WHEN 'B등급' THEN 'slate' WHEN '아코연구원' THEN 'ink' ELSE "color" END;
+UPDATE "grades" SET "color" = CASE "code" WHEN 'S등급' THEN 'amber' WHEN 'A등급' THEN 'teal' WHEN 'B등급' THEN 'slate' WHEN '연구원' THEN 'ink' ELSE "color" END;

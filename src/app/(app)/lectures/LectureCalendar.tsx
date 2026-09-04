@@ -117,7 +117,7 @@ export function LectureCalendar({
                         }
                       >
                         {(l.instructorName ?? "미배정").replace(
-                          /^(원주|강릉|춘천|충청|철원|태백|동해)/,
+                          /^(강북|강릉|춘천|충청|철원|태백|동해)/,
                           "",
                         )}
                       </span>

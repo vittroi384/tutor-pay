@@ -102,7 +102,7 @@ export const CHIP_COLORS: Record<
 export const DEFAULT_PAY_TYPE_COLOR: Record<string, string> = {
   관내: "sky",
   관외: "violet",
-  아코센터: "teal",
+  센터: "teal",
   기관지급: "slate",
   "주(주말교육)": "orange",
   교구정리: "lime",
@@ -113,14 +113,14 @@ export const DEFAULT_GRADE_COLOR: Record<string, string> = {
   S등급: "amber",
   A등급: "teal",
   B등급: "slate",
-  아코연구원: "ink",
+  연구원: "ink",
 };
 
 /** 칩·배지 색 (7.1) — 기본값 표. 화면에서 추가한 유형/등급은 CHIP_COLORS 팔레트로 색을 고른다 */
 export const PAY_TYPE_CLASS: Record<string, string> = {
   관내: "bg-sky-100 text-sky-800 ring-sky-200",
   관외: "bg-violet-100 text-violet-800 ring-violet-200",
-  아코센터: "bg-teal-100 text-teal-800 ring-teal-200",
+  센터: "bg-teal-100 text-teal-800 ring-teal-200",
   기관지급: "bg-slate-200 text-slate-700 ring-slate-300",
   "주(주말교육)": "bg-orange-100 text-orange-800 ring-orange-200",
   교구정리: "bg-lime-100 text-lime-800 ring-lime-200",
@@ -132,7 +132,7 @@ export const GRADE_CLASS: Record<string, string> = {
   S등급: "bg-amber-100 text-amber-800",
   A등급: "bg-teal-100 text-teal-800",
   B등급: "bg-slate-200 text-slate-700",
-  아코연구원: "bg-slate-800 text-white",
+  연구원: "bg-slate-800 text-white",
   미등록: "bg-rose-100 text-rose-800",
 };
 
@@ -140,7 +140,7 @@ export const GRADE_SHORT: Record<string, string> = {
   S등급: "S",
   A등급: "A",
   B등급: "B",
-  아코연구원: "연구원",
+  연구원: "연구원",
   미등록: "미등록",
 };
 

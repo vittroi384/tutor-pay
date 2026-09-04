@@ -50,7 +50,7 @@ const GRADE_ORDER: Record<string, number> = {
   S등급: 0,
   A등급: 1,
   B등급: 2,
-  아코연구원: 3,
+  연구원: 3,
 };
 /** 정렬 키별 비교값 — 등급은 S→A→B→연구원→미등록 순이 되도록 숫자로 바꾼다 */
 function sortValue(r: Row, key: SortKey): unknown {
@@ -444,7 +444,7 @@ export function InstructorForm({
       <div className="space-y-3">
         <div>
           <label className="label">
-            강사명 * (지역 접두 + 이름, 예: 원주홍길동)
+            강사명 * (지역 접두 + 이름, 예: 강북홍길동)
           </label>
           <input
             className="input"

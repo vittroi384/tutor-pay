@@ -4,7 +4,7 @@
   --font-sans:
     "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", system-ui, sans-serif;
-  /* 브랜드 색 — 아코스쿨 로고의 주황(#F5A800)을 기준으로 만든 단계. bg-brand-500 / text-brand-700 / ring-brand-500 처럼 사용 */
+  /* 브랜드 색 — 로고의 주황(#F5A800)을 기준으로 만든 단계. bg-brand-500 / text-brand-700 / ring-brand-500 처럼 사용 */
   --color-brand-50: #fff8e5;
   --color-brand-100: #ffeec2;
   --color-brand-200: #ffdf8a;

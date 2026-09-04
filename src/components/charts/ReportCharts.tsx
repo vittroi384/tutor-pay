@@ -37,7 +37,7 @@ const TYPE_COLOR: Record<string, string> = {
 const PAY_COLOR: Record<string, string> = {
   관내: "#0ea5e9",
   관외: "#8b5cf6",
-  아코센터: "#0d9488",
+  센터: "#0d9488",
   기관지급: "#94a3b8",
   "주(주말교육)": "#f97316",
   교구정리: "#84cc16",
@@ -48,7 +48,7 @@ const GRADE_COLOR: Record<string, string> = {
   S등급: "#f59e0b",
   A등급: "#0d9488",
   B등급: "#64748b",
-  아코연구원: "#1e293b",
+  연구원: "#1e293b",
   미등록: "#f43f5e",
 };
 const BRAND = "#f5a800"; // TutorPay 로고 주황 (도넛 등 보조)
@@ -497,7 +497,7 @@ export function ReportCharts({
           unit="회"
         />
       </Card>
-      <Card title="등급별 세후 강사료" sub="아코연구원·미등록은 단가 0">
+      <Card title="등급별 세후 강사료" sub="연구원·미등록은 단가 0">
         <DonutChart rows={data.byGrade} colors={GRADE_COLOR} metric="net" />
       </Card>
     </div>

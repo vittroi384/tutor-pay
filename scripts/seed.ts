@@ -48,7 +48,7 @@ BEGIN
   SELECT new_id, g.id, '부스', NULL, 35000 FROM grades g;
   UPDATE rate_items SET amount = 0, amount_after = NULL, tier_limit = NULL
    WHERE rate_table_id = new_id
-     AND grade_id IN (SELECT id FROM grades WHERE code IN ('B등급', '아코연구원'));
+     AND grade_id IN (SELECT id FROM grades WHERE code IN ('B등급', '연구원'));
 END $$;
 `);
 }
@@ -84,14 +84,14 @@ async function main() {
     }
     // 지급유형 기본 7종 보장 (마이그레이션이 이미 넣었으면 건너뜀)
     await tx.execute(
-      dsql`insert into pay_types (code, sort, role_based, manual, color, is_active) values ('관내',1,true,false,'sky',true),('관외',2,true,false,'violet',true),('아코센터',3,true,false,'teal',true),('기관지급',4,false,false,'slate',true),('주(주말교육)',5,false,false,'orange',true),('교구정리',6,false,false,'lime',true),('수동기입',7,false,true,'amber',true) on conflict (code) do nothing`,
+      dsql`insert into pay_types (code, sort, role_based, manual, color, is_active) values ('관내',1,true,false,'sky',true),('관외',2,true,false,'violet',true),('센터',3,true,false,'teal',true),('기관지급',4,false,false,'slate',true),('주(주말교육)',5,false,false,'orange',true),('교구정리',6,false,false,'lime',true),('수동기입',7,false,true,'amber',true) on conflict (code) do nothing`,
     );
     // 등급
     const GRADE_COLOR: Record<string, string> = {
       S등급: "amber",
       A등급: "teal",
       B등급: "slate",
-      아코연구원: "ink",
+      연구원: "ink",
     };
     const gradeRows = await tx
       .insert(schema.grades)

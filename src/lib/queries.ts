@@ -46,7 +46,7 @@ export async function getPayTypes(): Promise<PayTypeMeta[]> {
     .orderBy(asc(payTypes.sort), asc(payTypes.id));
 }
 
-/** 등급 목록 (S/A/B/아코연구원, sort 순) */
+/** 등급 목록 (S/A/B/연구원, sort 순) */
 export async function getGrades(): Promise<Grade[]> {
   return db.select().from(grades).orderBy(asc(grades.sort));
 }

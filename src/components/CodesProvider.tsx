@@ -22,7 +22,7 @@ const DEFAULT_CODES: Codes = {
     isActive: true,
     note: null,
   })),
-  grades: ["S등급", "A등급", "B등급", "아코연구원"].map((c, i) => ({
+  grades: ["S등급", "A등급", "B등급", "연구원"].map((c, i) => ({
     id: -(i + 1),
     code: c,
     label: c,

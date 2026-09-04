@@ -98,7 +98,7 @@ export function RentalForm({
               value={renter}
               onChange={(e) => setRenter(e.target.value)}
               list="renter-options"
-              placeholder="예: 강동초 / 원주심승현"
+              placeholder="예: 강동초 / 강북심승현"
             />
             <datalist id="renter-options">
               {renterOptions.map((n) => (

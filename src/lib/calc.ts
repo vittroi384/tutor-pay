@@ -26,7 +26,7 @@ export type PayTypeRule = {
 export const DEFAULT_PAY_TYPE_RULES: PayTypeRule[] = [
   { code: "관내", roleBased: true, manual: false, sort: 1 },
   { code: "관외", roleBased: true, manual: false, sort: 2 },
-  { code: "아코센터", roleBased: true, manual: false, sort: 3 },
+  { code: "센터", roleBased: true, manual: false, sort: 3 },
   { code: "기관지급", roleBased: false, manual: false, sort: 4 },
   { code: "주(주말교육)", roleBased: false, manual: false, sort: 5 },
   { code: "교구정리", roleBased: false, manual: false, sort: 6 },
@@ -35,7 +35,7 @@ export const DEFAULT_PAY_TYPE_RULES: PayTypeRule[] = [
 /** @deprecated 기본 7종 코드 목록 — 화면·검증은 DB 의 pay_types 를 쓰세요 */
 export const PAY_TYPES = DEFAULT_PAY_TYPE_RULES.map((r) => r.code);
 export const ROLES = ["주강사", "보조강사"] as const;
-export const GRADE_CODES = ["S등급", "A등급", "B등급", "아코연구원"] as const;
+export const GRADE_CODES = ["S등급", "A등급", "B등급", "연구원"] as const;
 export const INSTITUTION_TYPES = [
   "초등",
   "중등",
@@ -57,7 +57,7 @@ export function regionGroupOf(
 }
 
 export const REGIONS = [
-  "원주",
+  "강북",
   "강릉",
   "춘천",
   "충청",
@@ -141,7 +141,7 @@ export function findRateTable(
 /**
  * 4.3 단가 결정 규칙 (시트 I열 수식과 동일)
  * - 지급유형 공란 → 0 (경고), 수동기입 → 직접 입력값, 등급 미등록 → 0 (경고)
- * - 관내/관외/아코센터: 보조강사면 보조 단가, 아니면(역할 미지정 포함) 주강사 단가
+ * - 관내/관외/센터: 보조강사면 보조 단가, 아니면(역할 미지정 포함) 주강사 단가
  * - 기관지급/주(주말교육)/교구정리: 역할 무관
  * - 그 외 알 수 없는 유형: 주(관내) (시트 SWITCH 기본값)
  */
@@ -304,7 +304,7 @@ export function isInstitutionPaid(l: { payType: string | null }): boolean {
 /**
  * TutorPay이 실제로 지급할 강의인지 (= 미지급 집계·일괄 지급의 대상).
  *  - 기관지급: 기관이 직접 지급 → 제외
- *  - 세후 금액 0원: 아코연구원(단가 0), 등급 미등록, 단가 누락 등 → 줄 돈이 없으니 제외
+ *  - 세후 금액 0원: 연구원(단가 0), 등급 미등록, 단가 누락 등 → 줄 돈이 없으니 제외
  *    (연구원이 교구정리처럼 단가가 있는 강의를 하면 금액이 생기므로 자연히 포함된다)
  * 지급 체크박스 자체는 어떤 행이든 그대로 바꿀 수 있고, 여기서는 "세는 기준"만 정한다.
  * 기준을 바꾸고 싶으면 이 함수 하나만 고치면 전 화면(목록·정산·명세서·대시보드·강사·일괄지급)에 반영된다.

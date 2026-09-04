@@ -33,7 +33,7 @@ const INSTITUTION_TYPES = [
 const PAY_TYPES = [
   "관내",
   "관외",
-  "아코센터",
+  "센터",
   "기관지급",
   "주(주말교육)",
   "교구정리",

@@ -262,7 +262,7 @@ export function RatesView({
                 </tbody>
               </table>
               <p className="px-4 py-3 text-[12px] text-slate-500">
-                단가 결정: 역할 구분 유형(관내·관외·아코센터 등)은
+                단가 결정: 역할 구분 유형(관내·관외·센터 등)은
                 주강사/보조강사 열, 역할 무관 유형(기관지급·주말교육·교구정리
                 등)은 한 열, 단가 직접 입력 유형(수동기입)은 강의 등록 시
                 강사별로 입력. 등급 미등록 강사는 단가 0. 강의 저장 시{" "}
@@ -752,7 +752,7 @@ function PayTypeForm({
               />
               <span>
                 <b>주강사/보조강사 구분</b> — 단가표에 열이 2개
-                (관내·관외·아코센터처럼)
+                (관내·관외·센터처럼)
               </span>
             </label>
             <label className="flex items-start gap-2">

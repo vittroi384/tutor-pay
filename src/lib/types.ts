@@ -4,7 +4,7 @@
  * - LectureRow: 강의 1건 + 조인된 강사·기관·등급 정보 (queries.ts 가 이 형태로 반환)
  * - MasterData: 폼 드롭다운용 묶음, ActionResult: 서버 액션 공통 반환 타입 ({ok:true,data} | {ok:false,error})
  */
-/** 등급 (S등급/A등급/B등급/아코연구원) */
+/** 등급 (S등급/A등급/B등급/연구원) */
 export type Grade = {
   id: number;
   code: string;

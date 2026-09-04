@@ -28,7 +28,7 @@
    "sort": 3
   },
   {
-   "code": "아코연구원",
+   "code": "연구원",
    "label": "내부 인력",
    "sort": 4
   }
@@ -51,7 +51,7 @@
    },
    {
     "grade": "S등급",
-    "payType": "아코센터",
+    "payType": "센터",
     "role": "주강사",
     "amount": 55000
    },
@@ -69,7 +69,7 @@
    },
    {
     "grade": "S등급",
-    "payType": "아코센터",
+    "payType": "센터",
     "role": "보조강사",
     "amount": 35000
    },
@@ -105,7 +105,7 @@
    },
    {
     "grade": "A등급",
-    "payType": "아코센터",
+    "payType": "센터",
     "role": "주강사",
     "amount": 50000
    },
@@ -123,7 +123,7 @@
    },
    {
     "grade": "A등급",
-    "payType": "아코센터",
+    "payType": "센터",
     "role": "보조강사",
     "amount": 30000
    },
@@ -159,7 +159,7 @@
    },
    {
     "grade": "B등급",
-    "payType": "아코센터",
+    "payType": "센터",
     "role": "주강사",
     "amount": 40000
    },
@@ -177,7 +177,7 @@
    },
    {
     "grade": "B등급",
-    "payType": "아코센터",
+    "payType": "센터",
     "role": "보조강사",
     "amount": 25000
    },
@@ -200,55 +200,55 @@
     "amount": 20000
    },
    {
-    "grade": "아코연구원",
+    "grade": "연구원",
     "payType": "관내",
     "role": "주강사",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
+    "grade": "연구원",
     "payType": "관외",
     "role": "주강사",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
-    "payType": "아코센터",
+    "grade": "연구원",
+    "payType": "센터",
     "role": "주강사",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
+    "grade": "연구원",
     "payType": "관내",
     "role": "보조강사",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
+    "grade": "연구원",
     "payType": "관외",
     "role": "보조강사",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
-    "payType": "아코센터",
+    "grade": "연구원",
+    "payType": "센터",
     "role": "보조강사",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
+    "grade": "연구원",
     "payType": "기관지급",
     "role": "",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
+    "grade": "연구원",
     "payType": "주(주말교육)",
     "role": "",
     "amount": 0
    },
    {
-    "grade": "아코연구원",
+    "grade": "연구원",
     "payType": "교구정리",
     "role": "",
     "amount": 20000
@@ -290,9 +290,9 @@
   },
   {
    "name": "정민서",
-   "grade": "아코연구원",
+   "grade": "연구원",
    "phone": "010-0000-1004",
-   "region": "원주",
+   "region": "강북",
    "isActive": true,
    "note": null
   },
@@ -330,7 +330,7 @@
   },
   {
    "name": "임다은",
-   "grade": "아코연구원",
+   "grade": "연구원",
    "phone": "010-0000-1009",
    "region": "춘천",
    "isActive": true,
@@ -365,7 +365,7 @@
   {
    "name": "자차센터",
    "type": "기타 기관",
-   "region": "원주",
+   "region": "강북",
    "isActive": true
   },
   {
@@ -466,7 +466,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -488,7 +488,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "주강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 55000,
    "grossAmount": 220000,
    "netAmount": 212740,
@@ -598,7 +598,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -642,7 +642,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -664,7 +664,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "주강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 55000,
    "grossAmount": 220000,
    "netAmount": 212740,
@@ -774,7 +774,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -796,7 +796,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "주강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 55000,
    "grossAmount": 220000,
    "netAmount": 212740,
@@ -840,7 +840,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "주강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 55000,
    "grossAmount": 220000,
    "netAmount": 212740,
@@ -950,7 +950,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -972,7 +972,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "주강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 55000,
    "grossAmount": 220000,
    "netAmount": 212740,
@@ -1126,7 +1126,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -1148,7 +1148,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "주강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 55000,
    "grossAmount": 220000,
    "netAmount": 212740,
@@ -1258,7 +1258,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -1302,7 +1302,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "보조강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 35000,
    "grossAmount": 140000,
    "netAmount": 135380,
@@ -1324,7 +1324,7 @@
    "contentRaw": null,
    "sessions": 4.0,
    "role": "주강사",
-   "payType": "아코센터",
+   "payType": "센터",
    "unitPrice": 55000,
    "grossAmount": 220000,
    "netAmount": 212740,

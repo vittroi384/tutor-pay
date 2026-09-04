@@ -22,7 +22,7 @@ import {
 
 const ts = () => timestamp({ withTimezone: true, mode: "date" });
 
-/** 등급 코드 (S등급 / A등급 / B등급 / 아코연구원). 등급 없는 강사는 grade_id = null → 화면에서 '미등록' */
+/** 등급 코드 (S등급 / A등급 / B등급 / 연구원). 등급 없는 강사는 grade_id = null → 화면에서 '미등록' */
 export const grades = pgTable("grades", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(), // 표시명 (S등급 …). 강사·단가표는 id 로 참조하므로 이름을 바꿔도 안전
@@ -32,7 +32,7 @@ export const grades = pgTable("grades", {
 });
 
 /**
- * 지급유형 (= 단가표 열의 종류). 기본 7종(관내·관외·아코센터·기관지급·주(주말교육)·교구정리·수동기입)은
+ * 지급유형 (= 단가표 열의 종류). 기본 7종(관내·관외·센터·기관지급·주(주말교육)·교구정리·수동기입)은
  * 마이그레이션에서 넣고, 화면(단가표 → 지급유형 관리)에서 추가·이름 변경·비활성화할 수 있다.
  *  - roleBased: 주강사/보조강사 단가가 다른 유형 (단가표에 열이 2개 생김)
  *  - manual   : 강의 등록 시 강사별로 단가를 직접 입력 (단가표 열 없음)
@@ -53,7 +53,7 @@ export const instructors = pgTable(
   "instructors",
   {
     id: serial("id").primaryKey(),
-    name: text("name").notNull().unique(), // 지역접두+이름 (예: 원주나수영)
+    name: text("name").notNull().unique(), // 지역접두+이름 (예: 강북나수영)
     gradeId: integer("grade_id").references(() => grades.id, {
       onDelete: "set null",
     }),
