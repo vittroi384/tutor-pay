@@ -1,4 +1,4 @@
-# 💰 TutorPay — 강사 배정·급여정산 관리 시스템
+# TutorPay — 강사 배정·급여정산 관리 시스템
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -9,7 +9,7 @@
 ![AWS](https://img.shields.io/badge/AWS-EC2%20%2B%20RDS-FF9900?logo=amazonwebservices&logoColor=white)
 
 출강 수업(방과후·기관 강의)의 **강사 배정 → 단가 계산 → 월별 정산·명세서 → 통합보고서**를 한 곳에서 처리하는 웹앱입니다.
-구글 시트로 관리하던 강사 100여 명·연 수백 건의 강의 데이터를 이전해 실무에서 사용하는 시스템입니다.
+구글 시트로 관리하던 강사 100여 명·연 수백 건의 강의 데이터를 이전해 실무에서 사용하는 시스템입니다. 2026년 9월 AWS(EC2)로 이전해 운영 중입니다.
 
 ## 스크린샷
 
