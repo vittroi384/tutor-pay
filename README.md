@@ -46,6 +46,25 @@
 - **백업**: `scripts/backup.sh` — pg_dump를 gzip 후 보관(기본 90일), S3 동기화 명령 포함
 - **도메인/TLS**: Route 53 + Caddy TLS-ALPN 자동 인증서 (`DOMAIN` 환경변수)
 
+## 데이터 모델 (ERD)
+
+테이블 15개 — 단가 기준(버전·칸) / 사람·기관 / 강의(핵심) / 교구 / 운영(계정·변경 이력·정산 잠금).
+
+![ERD](assets/erd.png)
+
+- `lectures` 가 중심. 강사 1명 = 1행이고 `unit_price` · `gross_amount` · `net_amount` · `tax_type` 을 **저장 시점 스냅샷**으로 보관
+- 단가표는 `rate_tables.effective_from` 으로 버전을 나누고, `rate_items` 의 `amount` / `amount_after` / `tier_limit` 으로 차시 구간 단가를 표현
+- 강의가 연결된 강사·기관은 FK `restrict` 로 삭제 거부, 모든 변경은 `audit_logs` 에 `before` / `after` jsonb 로 남아 복원 가능
+- `settlement_locks`(year + month 복합키)가 있는 달은 서버 액션이 트랜잭션 안에서 모든 쓰기를 거부
+
+## 데이터 흐름
+
+강의 저장 한 번에 **입력 정리 → 단가표 버전 선택 → 칸 결정 → 구간 계산 → 세후 → 스냅샷** 이 서버에서 수행된다. 화면에서 넘어온 금액은 신뢰하지 않는다.
+
+![급여 흐름](assets/flow-payroll.png)
+
+설계 결정 16건과 마이그레이션 3중 검증 절차는 [`docs/DESIGN.md`](docs/DESIGN.md) 에 정리했다.
+
 ## 로컬 실행
 
 ```bash
