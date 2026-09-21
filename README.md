@@ -43,7 +43,7 @@
 
 - **EC2 + Docker Compose**: `docker-compose.yml` 하나로 앱·DB·리버스 프록시(Caddy, TLS 자동 발급)까지 기동
 - **RDS 전환 옵션**: `DATABASE_URL` 만 RDS 엔드포인트로 바꾸면 됨 (앱은 접속 문자열 외 의존 없음)
-- **백업**: `scripts/backup.sh` — pg_dump를 gzip 후 보관(기본 90일), S3 동기화 명령 포함
+- **백업**: `scripts/backup.sh` — pg_dump를 gzip 후 보관(기본 90일), `S3_BUCKET` 지정 시 S3 업로드(EC2 인스턴스 역할 인증, 서버에 액세스 키 없음)
 - **도메인/TLS**: Route 53 + Caddy TLS-ALPN 자동 인증서 (`DOMAIN` 환경변수)
 
 ## 데이터 모델 (ERD)
@@ -63,7 +63,7 @@
 
 ![급여 흐름](assets/flow-payroll.png)
 
-설계 결정 16건과 마이그레이션 3중 검증 절차는 [`docs/DESIGN.md`](docs/DESIGN.md) 에 정리했다.
+설계 결정 18건, 마이그레이션 3중 검증, AWS 배포 구성·서버 이전 절차는 [`docs/DESIGN.md`](docs/DESIGN.md) 에 정리했다.
 
 ## 로컬 실행
 
