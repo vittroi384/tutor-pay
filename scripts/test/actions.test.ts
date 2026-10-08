@@ -1,8 +1,9 @@
 /**
- * 서버 액션 통합 테스트 (실제 DB 사용, 마지막에 만든 데이터는 정리)
+ * 서버 액션 통합 테스트 (시드를 적재한 로컬 DB 전용 — 정리 단계가 감사로그를 삭제하므로 운영 DB 금지)
  *   AUTH_DISABLED=true DATABASE_URL=... npx tsx -r ./scripts/test/shim.cjs scripts/test/actions.test.ts
  */
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { and, eq, like, sql, desc } from "drizzle-orm";
 import { db } from "../../src/db";
 import {
@@ -1004,7 +1005,12 @@ async function main() {
   const left = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(lectures);
-  assert.equal(left[0].n, 558, "원본 558건 유지");
+  const seedLectures = (
+    JSON.parse(fs.readFileSync("data/tutorpay-seed.json", "utf8")) as {
+      lectures: unknown[];
+    }
+  ).lectures.length;
+  assert.equal(left[0].n, seedLectures, `시드 원본 ${seedLectures}건 유지`);
   console.log(
     "서버 액션 통합 테스트 통과 ✓ (배정·검증·정규화·스냅샷·잠금·일괄지급·단가표버전·지급유형/등급·교구·강의연동대여·삭제복원·병합)",
   );

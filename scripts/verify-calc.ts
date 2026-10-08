@@ -4,7 +4,7 @@ import { calcAmounts, classifyInstitution } from "../src/lib/calc";
 import type { RateItem } from "../src/lib/types";
 
 /**
- * data/tutorpay-seed.json 의 558건을 TS 계산 규칙(src/lib/calc.ts)으로 재계산해 시트 값과 대조한다.
+ * data/tutorpay-seed.json 의 시드 전체를 TS 계산 규칙(src/lib/calc.ts)으로 재계산해 시트 값과 대조한다.
  * 파이썬 추출 스크립트와 별개로, 웹앱이 실제로 쓰는 코드가 시트와 같은 결과를 내는지 확인하는 용도.
  */
 const seed = JSON.parse(

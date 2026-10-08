@@ -246,7 +246,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
   name: text("name"),
-  role: text("role").notNull().default("admin"), // admin | viewer
+  role: text("role").notNull().default("admin"), // admin | staff | viewer
   isActive: boolean("is_active").notNull().default(true),
   lastLoginAt: ts(),
   createdAt: ts().notNull().defaultNow(),

@@ -2,7 +2,7 @@
 {
 	auto_https disable_redirects
 }
-# 기본 도메인(tutorpay.example.com)과 보조 도메인(DuckDNS)을 함께 서비스 — 각각 인증서 자동 발급
+# 기본 도메인(tutorpay.example.com)과 보조 도메인(선택)을 함께 서비스 — 각각 인증서 자동 발급
 {$DOMAIN}, {$DOMAIN2} {
 	tls {
 		issuer acme {

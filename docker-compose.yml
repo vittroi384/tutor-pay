@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Seoul
     ports:
-      - "127.0.0.1:5432:5432" # 서버 안(localhost)에서만 열림 — 인터넷 노출 아님. PC에서는 SSH 터널로 접속 (README '데이터 직접 보기')
+      - "127.0.0.1:5432:5432" # 서버 안(localhost)에서만 열림 — 인터넷 노출 아님. PC에서는 SSH 터널로 접속
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

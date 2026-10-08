@@ -6,10 +6,10 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-C5F74F?logo=drizzle&logoColor=black)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-![AWS](https://img.shields.io/badge/AWS-EC2%20%2B%20RDS-FF9900?logo=amazonwebservices&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-EC2%20%C2%B7%20S3-FF9900?logo=amazonwebservices&logoColor=white)
 
 출강 수업(방과후·기관 강의)의 **강사 배정 → 단가 계산 → 월별 정산·명세서 → 통합보고서**를 한 곳에서 처리하는 웹앱입니다.
-구글 시트로 관리하던 강사 100여 명·연 수백 건의 강의 데이터를 이전해 실무에서 사용하는 시스템입니다. 2026년 9월 AWS(EC2)로 이전해 운영 중입니다.
+구글 시트로 관리하던 강사 100여 명·연 수백 건의 강의 데이터를 이전해 실무에서 사용하는 시스템입니다. 2026년 9월 AWS(EC2)로 이전해 운영 중입니다. (공개판은 가상 데이터로 재적재한 사본이라 커밋 이력이 압축되어 있습니다)
 
 ## 스크린샷
 
@@ -37,12 +37,12 @@
 사용자 ──HTTPS──▶ Caddy (자동 TLS) ──▶ Next.js (App Router, 서버 액션)
                      │                        │ Drizzle ORM
                 EC2 (Docker Compose) ─────▶ PostgreSQL 16
-                     │                     (컨테이너 볼륨 또는 RDS)
+                     │                     (EBS 볼륨 · RDS는 교체 옵션, 현재 미사용)
                  백업: pg_dump → gzip → S3 sync (주 1회 cron)
 ```
 
 - **EC2 + Docker Compose**: `docker-compose.yml` 하나로 앱·DB·리버스 프록시(Caddy, TLS 자동 발급)까지 기동
-- **RDS 전환 옵션**: `DATABASE_URL` 만 RDS 엔드포인트로 바꾸면 됨 (앱은 접속 문자열 외 의존 없음)
+- **RDS 전환 옵션**: 현재 미사용. `DATABASE_URL` 만 RDS 엔드포인트로 바꾸면 됨 (앱은 접속 문자열 외 의존 없음)
 - **백업**: `scripts/backup.sh` — pg_dump를 gzip 후 보관(기본 90일), `S3_BUCKET` 지정 시 S3 업로드(EC2 인스턴스 역할 인증, 서버에 액세스 키 없음)
 - **도메인/TLS**: Route 53 + Caddy TLS-ALPN 자동 인증서 (`DOMAIN` 환경변수)
 
@@ -54,8 +54,8 @@
 
 - `lectures` 가 중심. 강사 1명 = 1행이고 `unit_price` · `gross_amount` · `net_amount` · `tax_type` 을 **저장 시점 스냅샷**으로 보관
 - 단가표는 `rate_tables.effective_from` 으로 버전을 나누고, `rate_items` 의 `amount` / `amount_after` / `tier_limit` 으로 차시 구간 단가를 표현
-- 강의가 연결된 강사·기관은 FK `restrict` 로 삭제 거부, 모든 변경은 `audit_logs` 에 `before` / `after` jsonb 로 남아 복원 가능
-- `settlement_locks`(year + month 복합키)가 있는 달은 서버 액션이 트랜잭션 안에서 모든 쓰기를 거부
+- 강의가 연결된 강사·기관은 FK `restrict` 로 삭제 거부. 강의·정산·단가표·마스터 변경이 `audit_logs` 에 `before` / `after` jsonb 로 남고 삭제 행은 복원 가능(단가표 버전 제외)
+- `settlement_locks`(year + month 복합키)가 있는 달은 강의 등록·수정·삭제·지급 변경을 트랜잭션 안에서 거부(일괄 지급·복원은 액션 진입 시 검사)
 
 ## 데이터 흐름
 
@@ -63,12 +63,12 @@
 
 ![급여 흐름](assets/flow-payroll.png)
 
-설계 결정 18건, 마이그레이션 3중 검증, AWS 배포 구성·서버 이전 절차는 [`docs/DESIGN.md`](docs/DESIGN.md) 에 정리했다.
+설계 결정 18건, 마이그레이션 3중 검증(수동 절차, CI 미구축), AWS 배포 구성·서버 이전 절차는 [`docs/DESIGN.md`](docs/DESIGN.md) 에 정리했다.
 
 ## 로컬 실행
 
 ```bash
-cp .env.example .env          # AUTH_DISABLED=true 로 로그인 없이 로컬 관리자 동작
+cp .env.example .env          # 로컬에서 로그인 없이 쓰려면 .env 의 AUTH_DISABLED 를 true 로
 docker compose -f docker-compose.local.yml up -d   # PostgreSQL 만 컨테이너로
 npm ci
 npm run db:migrate
@@ -81,6 +81,6 @@ npm run dev                   # http://localhost:3000
 ## 기술적 특징
 
 - **금액 스냅샷 설계** — 단가표가 개정돼도 이미 확정된 강의 금액은 변하지 않도록, 강의 저장 시점의 단가·세전·세후를 스냅샷으로 기록. 단가표는 시행일(effective_from) 기반 버전 테이블로 관리
-- **급여 규칙의 마이그레이션화** — 요율 개편(차시 구간·지역 특례·신규 지급유형)을 SQL 마이그레이션으로 남겨 언제 무엇이 바뀌었는지 추적 가능, 멱등 실행 안전
+- **급여 규칙의 마이그레이션화** — 요율 개편(차시 구간·지역 특례·신규 지급유형)을 SQL 마이그레이션으로 남겨 언제 무엇이 바뀌었는지 추적 가능. 데이터 마이그레이션은 재실행 안전, 스키마 변경은 적용 이력으로 1회 보장
 - **시트 → DB 이전 파이프라인** — 추출 스크립트가 시트 캐시값과 재계산 값을 대조해 불일치를 보고, 원본 공란은 임의로 채우지 않고 경고로 노출
 - **서버 액션 기반 CRUD** — Next.js App Router 서버 액션으로 API 레이어 없이 타입 안전한 데이터 흐름, Drizzle 스키마가 단일 출처

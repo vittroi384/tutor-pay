@@ -50,7 +50,7 @@ export async function addUser(
   });
 }
 
-/** 권한(관리자/조회 전용) 또는 활성 여부 변경. 본인 권한 낮추기·비활성화, .env 고정 계정 비활성화는 거부 */
+/** 권한(관리자/실무자/조회 전용) 또는 활성 여부 변경. 본인 권한 낮추기·비활성화, .env 고정 계정 비활성화는 거부 */
 export async function updateUser(
   id: number,
   patch: { role?: "admin" | "staff" | "viewer"; isActive?: boolean },
