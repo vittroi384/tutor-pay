@@ -53,7 +53,7 @@ export const instructors = pgTable(
   "instructors",
   {
     id: serial("id").primaryKey(),
-    name: text("name").notNull().unique(), // 지역접두+이름 (예: 강북나수영)
+    name: text("name").notNull().unique(), // 지역접두+이름 (예: 가온홍길동)
     gradeId: integer("grade_id").references(() => grades.id, {
       onDelete: "set null",
     }),
@@ -99,14 +99,14 @@ export const rateItems = pgTable(
     amount: integer("amount").notNull().default(0), // 기본 단가(구간형이면 1~2차시 단가)
     amountAfter: integer("amount_after"), // 3차시부터 단가 — null 이면 전 차시 동일(flat)
     tierLimit: real("tier_limit"), // 구간 경계 차시(기본 2) — amount_after 있을 때만 사용
-    regionGroup: text("region_group"), // 지역 그룹 칸('강릉·동해') — null = 그 외 지역 기본
+    regionGroup: text("region_group"), // 지역 그룹 칸('나래·다솜') — null = 그 외 지역 기본
   },
   (t) => [index("rate_items_table_idx").on(t.rateTableId)],
 );
 
 export const institutions = pgTable("institutions", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(), // 지역 접미(_동해 등) 포함한 이름 그대로 보존
+  name: text("name").notNull().unique(), // 지역 접미(_다솜 등) 포함한 이름 그대로 보존
   type: text("type").notNull().default("기타 기관"),
   region: text("region"),
   isActive: boolean("is_active").notNull().default(true),

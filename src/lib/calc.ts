@@ -45,9 +45,9 @@ export const INSTITUTION_TYPES = [
   "기타 기관",
 ] as const;
 /** 일괄 단가(주 5만·보조 3.5만)가 적용되는 지역 — 강사의 지역 값으로 판별 */
-export const FLAT_RATE_REGIONS = ["강릉", "동해"] as const;
-export const FLAT_RATE_GROUP = "강릉·동해";
-/** 강사 지역 → 단가표 지역 그룹 ('강릉·동해' 또는 null=기본) */
+export const FLAT_RATE_REGIONS = ["나래", "다솜"] as const;
+export const FLAT_RATE_GROUP = "나래·다솜";
+/** 강사 지역 → 단가표 지역 그룹 ('나래·다솜' 또는 null=기본) */
 export function regionGroupOf(
   region: string | null | undefined,
 ): string | null {
@@ -57,13 +57,13 @@ export function regionGroupOf(
 }
 
 export const REGIONS = [
-  "강북",
-  "강릉",
-  "춘천",
-  "충청",
-  "철원",
-  "태백",
-  "동해",
+  "가온",
+  "나래",
+  "라온",
+  "마루",
+  "보람",
+  "새론",
+  "다솜",
 ] as const;
 
 export type RateColumn = {
@@ -165,7 +165,7 @@ export function lookupUnitPrice(
   return item?.amount ?? 0;
 }
 
-/** 등급×유형×역할 칸 찾기 — 강사 지역 그룹('강릉·동해') 칸이 있으면 우선, 없으면 기본(null) 칸 */
+/** 등급×유형×역할 칸 찾기 — 강사 지역 그룹('나래·다솜') 칸이 있으면 우선, 없으면 기본(null) 칸 */
 export function pickRateItem(
   items: RateItem[],
   gradeId: number,
@@ -241,7 +241,7 @@ export type CalcInput = {
   sessions: number | null;
   /** 세금 구분 — 없으면 사업소득(3.3%) */
   taxType?: string | null;
-  /** 강사 지역 — 강릉·동해면 일괄 단가 칸을 우선 사용 (없으면 기본 칸) */
+  /** 강사 지역 — 나래·다솜면 일괄 단가 칸을 우선 사용 (없으면 기본 칸) */
   region?: string | null;
 };
 
@@ -288,7 +288,7 @@ export function classifyInstitution(name: string): string {
   return "기타 기관";
 }
 
-const REGION_SUFFIX = ["_동해", "_횡성", "_철원", "_정선"];
+const REGION_SUFFIX = ["_다솜", "_이음", "_보람", "_하람"];
 export function regionFromInstitutionName(name: string): string | null {
   for (const s of REGION_SUFFIX) if (name.endsWith(s)) return s.slice(1);
   return null;

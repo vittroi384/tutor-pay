@@ -400,7 +400,7 @@ function InstitutionForm({
       <div className="space-y-3">
         <div>
           <label className="label">
-            기관명 * (지역 접미가 필요하면 _동해 처럼)
+            기관명 * (지역 접미가 필요하면 _다솜 처럼)
           </label>
           <input
             className="input"
@@ -435,7 +435,7 @@ function InstitutionForm({
               className="input"
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              placeholder="예: 동해"
+              placeholder="예: 다솜"
             />
           </div>
         </div>

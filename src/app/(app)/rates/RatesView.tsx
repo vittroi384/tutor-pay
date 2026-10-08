@@ -211,7 +211,7 @@ export function RatesView({
                   {selected.items.some((i) => i.regionGroup) && (
                     <tr className="bg-sky-50/60">
                       <td className="whitespace-nowrap font-medium text-sky-800">
-                        강릉·동해 강사
+                        나래·다솜 강사
                         <span className="ml-1 text-[11px] font-normal text-sky-600">
                           전 등급 공통 · 일괄
                         </span>
@@ -221,7 +221,7 @@ export function RatesView({
                           selected.items,
                           grades[0]?.id ?? 0,
                           c,
-                          "강릉·동해",
+                          "나래·다솜",
                         );
                         return (
                           <td key={c.key} className="num text-sky-900">
@@ -333,11 +333,11 @@ function NewVersionForm({
       }
     return v;
   });
-  // 강릉·동해 공통 행(전 등급 동일·일괄) — 비워두면 그룹 칸 없이 기본 단가 사용
+  // 나래·다솜 공통 행(전 등급 동일·일괄) — 비워두면 그룹 칸 없이 기본 단가 사용
   const [gd, setGd] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {};
     for (const c of columns) {
-      const it = itemOf(base.items, grades[0]?.id ?? 0, c, "강릉·동해");
+      const it = itemOf(base.items, grades[0]?.id ?? 0, c, "나래·다솜");
       v[c.key] = it ? String(it.amount) : "";
     }
     return v;
@@ -360,7 +360,7 @@ function NewVersionForm({
           amountAfter: af === "" ? null : Number(af) || 0,
           tierLimit: af === "" ? null : 2,
         });
-        // 강릉·동해 공통 값이 입력된 열은 전 등급에 같은 그룹 칸 생성
+        // 나래·다솜 공통 값이 입력된 열은 전 등급에 같은 그룹 칸 생성
         const gv = (gd[c.key] ?? "").replace(/,/g, "").trim();
         if (gv !== "")
           items.push({
@@ -368,7 +368,7 @@ function NewVersionForm({
             payType: c.payType,
             role: c.role,
             amount: Number(gv) || 0,
-            regionGroup: "강릉·동해",
+            regionGroup: "나래·다솜",
           });
       }
     const r = await createRateTable({
@@ -422,7 +422,7 @@ function NewVersionForm({
       <p className="mb-2 text-[12px] text-slate-500">
         {base.effectiveFrom} 버전의 값을 기본으로 채웠습니다. 각 칸의 위 칸 =
         기본 단가(1~2차시), 아래 칸 = 3차시부터(비우면 전 차시 동일). 맨 윗줄
-        강릉·동해는 전 등급 공통 일괄값입니다. (사용 중지된 유형은 제외)
+        나래·다솜는 전 등급 공통 일괄값입니다. (사용 중지된 유형은 제외)
       </p>
       <div className="overflow-x-auto">
         <table className="dense w-full min-w-[1360px] text-[12.5px]">
@@ -439,7 +439,7 @@ function NewVersionForm({
           <tbody>
             <tr className="bg-sky-50/60">
               <td className="whitespace-nowrap font-medium text-sky-800">
-                강릉·동해
+                나래·다솜
                 <div className="text-[10px] font-normal text-sky-600">
                   전 등급 공통 · 일괄 (비우면 미사용)
                 </div>

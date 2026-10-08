@@ -94,7 +94,7 @@ async function main() {
       name: `테스트A${tag}`,
       gradeId: gA,
       phone: null,
-      region: "강북",
+      region: "가온",
       isActive: true,
       note: null,
     }),
@@ -105,7 +105,7 @@ async function main() {
       name: `테스트B${tag}`,
       gradeId: gB,
       phone: null,
-      region: "강북",
+      region: "가온",
       isActive: true,
       note: null,
     }),
@@ -261,7 +261,7 @@ async function main() {
       name: `테스트A${tag}`,
       gradeId: gB,
       phone: null,
-      region: "강북",
+      region: "가온",
       isActive: true,
       note: null,
     }),
@@ -276,7 +276,7 @@ async function main() {
       name: `테스트A${tag}`,
       gradeId: gA,
       phone: null,
-      region: "강북",
+      region: "가온",
       isActive: true,
       note: null,
     }),
@@ -588,7 +588,7 @@ async function main() {
     "복원된 강의 금액·날짜 확인",
   ); // 정리는 note=tag 일괄 삭제가 담당
 
-  // ---- 2026-08 단가 개편: 차시 구간·강릉/동해 일괄·부스·유아 ----
+  // ---- 2026-08 단가 개편: 차시 구간·나래/다솜 일괄·부스·유아 ----
   {
     const mk = async (over: Record<string, unknown>, instId: number) => {
       const r = await createLectures({
@@ -641,12 +641,12 @@ async function main() {
     assert.equal(t3.grossAmount, 120000, "관내 보조 4차시 = 3만×4 일괄");
     const [gInst] = await db
       .insert(instructors)
-      .values({ name: tag + "강릉검증", gradeId: gradeA!.id, region: "강릉" })
+      .values({ name: tag + "나래검증", gradeId: gradeA!.id, region: "나래" })
       .returning();
     const t4 = await mk({ sessions: 4, payType: "관외" }, gInst.id);
-    assert.equal(t4.grossAmount, 200000, "강릉 강사: 관외 4차시도 일괄 5만×4");
+    assert.equal(t4.grossAmount, 200000, "나래 강사: 관외 4차시도 일괄 5만×4");
     const t4b = await mk({ sessions: 3, role: "보조강사" }, gInst.id);
-    assert.equal(t4b.grossAmount, 105000, "강릉 보조 3차시 = 3.5만×3");
+    assert.equal(t4b.grossAmount, 105000, "나래 보조 3차시 = 3.5만×3");
     await deleteInstructor(gInst.id);
     const t5 = await mk({ sessions: 3, payType: "부스" }, tierInst.id);
     assert.equal(t5.grossAmount, 105000, "부스 3차시 = 3.5만×3 (역할 무관)");

@@ -444,7 +444,7 @@ export function InstructorForm({
       <div className="space-y-3">
         <div>
           <label className="label">
-            강사명 * (지역 접두 + 이름, 예: 강북홍길동)
+            강사명 * (지역 접두 + 이름, 예: 가온홍길동)
           </label>
           <input
             className="input"
@@ -474,14 +474,14 @@ export function InstructorForm({
               value={region}
               onChange={setRegion}
               allowCustom
-              placeholder="선택하거나 새 지역 입력 (예: 속초)"
+              placeholder="선택하거나 새 지역 입력 (예: 아람)"
               options={[...new Set([...REGIONS, instructor?.region ?? ""])]
                 .filter(Boolean)
                 .sort((a, b) => a.localeCompare(b, "ko"))
                 .map((r) => ({ value: r, label: r }))}
             />
             <p className="mt-1 text-[11px] text-slate-400">
-              강릉·동해 강사는 단가가 일괄 적용됩니다(주 5만 · 보조 3.5만).
+              나래·다솜 강사는 단가가 일괄 적용됩니다(주 5만 · 보조 3.5만).
             </p>
           </div>
         </div>

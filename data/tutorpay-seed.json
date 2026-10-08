@@ -260,7 +260,7 @@
    "name": "김하늘",
    "grade": "S등급",
    "phone": "010-0000-1000",
-   "region": "강릉",
+   "region": "나래",
    "isActive": true,
    "note": null
   },
@@ -268,7 +268,7 @@
    "name": "이도윤",
    "grade": "A등급",
    "phone": "010-0000-1001",
-   "region": "동해",
+   "region": "다솜",
    "isActive": true,
    "note": null
   },
@@ -276,7 +276,7 @@
    "name": "박예준",
    "grade": "A등급",
    "phone": "010-0000-1002",
-   "region": "속초",
+   "region": "아람",
    "isActive": true,
    "note": null
   },
@@ -284,7 +284,7 @@
    "name": "최채원",
    "grade": "B등급",
    "phone": "010-0000-1003",
-   "region": "춘천",
+   "region": "라온",
    "isActive": true,
    "note": null
   },
@@ -292,7 +292,7 @@
    "name": "정민서",
    "grade": "연구원",
    "phone": "010-0000-1004",
-   "region": "강북",
+   "region": "가온",
    "isActive": true,
    "note": null
   },
@@ -300,7 +300,7 @@
    "name": "강수아",
    "grade": "S등급",
    "phone": "010-0000-1005",
-   "region": "태백",
+   "region": "새론",
    "isActive": true,
    "note": null
   },
@@ -308,7 +308,7 @@
    "name": "조시우",
    "grade": "A등급",
    "phone": "010-0000-1006",
-   "region": "강릉",
+   "region": "나래",
    "isActive": true,
    "note": null
   },
@@ -316,7 +316,7 @@
    "name": "윤서준",
    "grade": "A등급",
    "phone": "010-0000-1007",
-   "region": "동해",
+   "region": "다솜",
    "isActive": true,
    "note": null
   },
@@ -324,7 +324,7 @@
    "name": "장지우",
    "grade": "B등급",
    "phone": "010-0000-1008",
-   "region": "속초",
+   "region": "아람",
    "isActive": true,
    "note": null
   },
@@ -332,7 +332,7 @@
    "name": "임다은",
    "grade": "연구원",
    "phone": "010-0000-1009",
-   "region": "춘천",
+   "region": "라온",
    "isActive": true,
    "note": null
   }
@@ -341,49 +341,49 @@
   {
    "name": "가나초등학교",
    "type": "초등",
-   "region": "강릉",
+   "region": "나래",
    "isActive": true
   },
   {
    "name": "다라중학교",
    "type": "중등",
-   "region": "동해",
+   "region": "다솜",
    "isActive": true
   },
   {
    "name": "마바초등학교",
    "type": "초등",
-   "region": "속초",
+   "region": "아람",
    "isActive": true
   },
   {
    "name": "사아유치원",
    "type": "유치원",
-   "region": "춘천",
+   "region": "라온",
    "isActive": true
   },
   {
    "name": "자차센터",
    "type": "기타 기관",
-   "region": "강북",
+   "region": "가온",
    "isActive": true
   },
   {
    "name": "카타초등학교",
    "type": "초등",
-   "region": "태백",
+   "region": "새론",
    "isActive": true
   },
   {
    "name": "파하중학교",
    "type": "중등",
-   "region": "강릉",
+   "region": "나래",
    "isActive": true
   },
   {
    "name": "한글초등학교",
    "type": "초등",
-   "region": "동해",
+   "region": "다솜",
    "isActive": true
   }
  ],

@@ -24,7 +24,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM rate_tables WHERE effective_from = '2026-08-26') THEN RETURN; END IF;
   SELECT id INTO prev_id FROM rate_tables WHERE effective_from < '2026-08-26' ORDER BY effective_from DESC LIMIT 1;
   INSERT INTO rate_tables (effective_from, memo, created_by)
-  VALUES ('2026-08-26', '2026-08 개편: 강릉·동해 일괄, 차시 구간(1~2차시/이후), 유아·부스 고정 단가', '규칙 개편(자동)')
+  VALUES ('2026-08-26', '2026-08 개편: 나래·다솜 일괄, 차시 구간(1~2차시/이후), 유아·부스 고정 단가', '규칙 개편(자동)')
   RETURNING id INTO new_id;
   IF prev_id IS NOT NULL THEN
     INSERT INTO rate_items (rate_table_id, grade_id, pay_type, role, amount)
@@ -42,7 +42,7 @@ BEGIN
   SELECT new_id, g.id, '유아', r.role, CASE r.role WHEN '주강사' THEN 40000 ELSE 35000 END
   FROM grades g CROSS JOIN (VALUES ('주강사'), ('보조강사')) AS r(role);
   INSERT INTO rate_items (rate_table_id, grade_id, pay_type, role, amount, region_group)
-  SELECT new_id, g.id, pt.pay_type, r.role, CASE r.role WHEN '주강사' THEN 50000 ELSE 35000 END, '강릉·동해'
+  SELECT new_id, g.id, pt.pay_type, r.role, CASE r.role WHEN '주강사' THEN 50000 ELSE 35000 END, '나래·다솜'
   FROM grades g CROSS JOIN (VALUES ('관내'), ('관외')) AS pt(pay_type) CROSS JOIN (VALUES ('주강사'), ('보조강사')) AS r(role);
   INSERT INTO rate_items (rate_table_id, grade_id, pay_type, role, amount)
   SELECT new_id, g.id, '부스', NULL, 35000 FROM grades g;

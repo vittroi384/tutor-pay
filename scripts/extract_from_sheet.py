@@ -40,7 +40,7 @@ RATE_COLUMNS = [
 ]
 PAY_TYPES = ["관내", "관외", "센터", "기관지급", "주(주말교육)", "교구정리", "수동기입"]
 ROLES = ["주강사", "보조강사"]
-INSTRUCTOR_REGION_PREFIXES = ["강북", "강릉", "춘천", "충청", "철원", "태백", "동해"]
+INSTRUCTOR_REGION_PREFIXES = ["가온", "나래", "라온", "마루", "보람", "새론", "다솜"]
 
 # 5.1 콘텐츠 표준명 ← 별칭
 CONTENT_ALIASES = OrderedDict([

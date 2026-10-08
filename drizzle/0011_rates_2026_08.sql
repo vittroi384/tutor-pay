@@ -1,5 +1,5 @@
 -- 2026-08 강사료 개편 (요청: 2026-08-26)
---  · 강릉·동해 강사: 전 차시 일괄 주 50,000 / 보조 35,000 (관내·관외 무관)
+--  · 나래·다솜 강사: 전 차시 일괄 주 50,000 / 보조 35,000 (관내·관외 무관)
 --  · 그 외 지역: 관내 주 1~2차시 50,000 → 3차시부터 30,000 / 보조 30,000 일괄
 --               관외 주 1~2차시 60,000 → 3차시부터 40,000 / 보조 40,000 일괄
 --  · 유아: 주 40,000 / 보조 35,000 일괄 (지급유형 '유아' 신설)
@@ -21,7 +21,7 @@ BEGIN
   END IF;
   SELECT id INTO prev_id FROM rate_tables WHERE effective_from < '2026-08-26' ORDER BY effective_from DESC LIMIT 1;
   INSERT INTO rate_tables (effective_from, memo, created_by)
-  VALUES ('2026-08-26', '2026-08 개편: 강릉·동해 일괄, 차시 구간(1~2차시/이후), 유아·부스 고정 단가', '규칙 개편(자동)')
+  VALUES ('2026-08-26', '2026-08 개편: 나래·다솜 일괄, 차시 구간(1~2차시/이후), 유아·부스 고정 단가', '규칙 개편(자동)')
   RETURNING id INTO new_id;
 
   -- 1) 이전 버전의 모든 칸을 그대로 복사 (기관지급 0원 등 누락 방지)
@@ -45,9 +45,9 @@ BEGIN
   SELECT new_id, g.id, '유아', r.role, CASE r.role WHEN '주강사' THEN 40000 ELSE 35000 END
   FROM grades g CROSS JOIN (VALUES ('주강사'), ('보조강사')) AS r(role);
 
-  -- 4) 강릉·동해 그룹 칸 — 관내·관외 어느 유형을 골라도 주 5만/보조 3.5만 일괄
+  -- 4) 나래·다솜 그룹 칸 — 관내·관외 어느 유형을 골라도 주 5만/보조 3.5만 일괄
   INSERT INTO rate_items (rate_table_id, grade_id, pay_type, role, amount, region_group)
-  SELECT new_id, g.id, pt.pay_type, r.role, CASE r.role WHEN '주강사' THEN 50000 ELSE 35000 END, '강릉·동해'
+  SELECT new_id, g.id, pt.pay_type, r.role, CASE r.role WHEN '주강사' THEN 50000 ELSE 35000 END, '나래·다솜'
   FROM grades g
   CROSS JOIN (VALUES ('관내'), ('관외')) AS pt(pay_type)
   CROSS JOIN (VALUES ('주강사'), ('보조강사')) AS r(role);

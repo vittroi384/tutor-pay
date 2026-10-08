@@ -208,7 +208,7 @@ export function Sidebar({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logo.png"
-          alt="AICO SCHOOL"
+          alt="TutorPay"
           className="hidden h-6 w-auto sm:block"
         />
       </header>

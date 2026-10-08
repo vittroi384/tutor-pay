@@ -71,7 +71,7 @@ export type RateItem = {
   amount: number; // 기본 단가 (구간형이면 1~2차시)
   amountAfter?: number | null; // 3차시부터 단가 — null/없음 = 전 차시 동일
   tierLimit?: number | null; // 구간 경계 차시 (기본 2)
-  regionGroup?: string | null; // '강릉·동해' 등 지역 그룹 칸 — null = 기본
+  regionGroup?: string | null; // '나래·다솜' 등 지역 그룹 칸 — null = 기본
 };
 /** 단가표 버전 (effectiveFrom 이후 강의에 적용) */
 export type RateTable = {
