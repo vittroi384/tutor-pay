@@ -57,14 +57,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const row = await db.query.users.findFirst({
           where: eq(users.email, user.email.toLowerCase()),
         });
-        token.role = row?.role ?? "admin";
+        token.role = row?.role ?? "viewer"; // 최종 권한 판정은 session.ts 가 매 요청 DB 와 대조
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as { role?: string }).role =
-          (token.role as string | undefined) ?? "admin";
+          (token.role as string | undefined) ?? "viewer";
       }
       return session;
     },

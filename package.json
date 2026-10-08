@@ -14,7 +14,9 @@
     "db:verify": "tsx scripts/verify-calc.ts",
     "start:prod": "tsx scripts/migrate.ts && next start -p 3000",
     "test:actions": "tsx -r ./scripts/test/shim.cjs scripts/test/actions.test.ts",
-    "db:extract": "python3 scripts/extract_from_sheet.py"
+    "db:extract": "python3 scripts/extract_from_sheet.py",
+    "test:unit": "node --import tsx --test src/lib/calc.test.ts",
+    "test": "npm run test:unit"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

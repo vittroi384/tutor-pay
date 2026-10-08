@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: 타입 검사 · 단위 테스트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:unit
+
+  db:
+    name: 마이그레이션 검증 · 통합 테스트
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tutorpay
+          POSTGRES_USER: tutorpay
+          POSTGRES_PASSWORD: tutorpay
+          TZ: Asia/Seoul
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U tutorpay"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://tutorpay:tutorpay@localhost:5432/tutorpay
+      AUTH_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 빈 DB 에서 전체 생성
+        run: npm run db:migrate
+      - name: 재실행 멱등 (두 번째 적용이 무해한지)
+        run: npm run db:migrate
+      - name: 가상 시드 적재
+        run: npm run db:seed
+      - name: 서버 액션 통합 테스트 (시드 적재 DB)
+        run: npm run test:actions

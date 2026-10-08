@@ -144,7 +144,7 @@ async function main() {
     travelFee: 0,
     institutionId: org,
     institutionName: null,
-    content: "투닝",
+    content: "로봇", // 공개 시드의 별칭 (data/tutorpay-seed.json contents[].aliases)
     payType: "관외",
     isDone: false,
     isPaid: false,
@@ -170,8 +170,8 @@ async function main() {
   assert.equal(rA.netAmount, Math.floor((160000 * 967) / 1000)); // 154,720
   assert.equal(rB.unitPrice, 0, "B등급 단가는 0원 (미사용)");
   assert.equal(rB.netAmount, 0);
-  assert.equal(rA.content, "AI 투닝", "별칭 '투닝' → 표준명 정규화");
-  assert.equal(rA.contentRaw, "투닝");
+  assert.equal(rA.content, "로봇코딩", "별칭 '로봇' → 표준명 정규화");
+  assert.equal(rA.contentRaw, "로봇");
 
   // 검증 규칙
   fail(
@@ -964,7 +964,7 @@ async function main() {
   );
   assert.equal(renamed.renamed, 1);
   const tuning = await db.query.contents.findFirst({
-    where: eq(contents.name, "AI 투닝"),
+    where: eq(contents.name, "로봇코딩"),
   });
   const m2 = ok(await mergeContents(newContent!.id, tuning!.id), "콘텐츠 병합");
   assert.equal(m2.moved, 1);
@@ -974,7 +974,7 @@ async function main() {
       .from(lectures)
       .where(and(eq(lectures.note, tag), eq(lectures.payType, "수동기입")))
   )[0];
-  assert.equal(afterMerge.content, "AI 투닝");
+  assert.equal(afterMerge.content, "로봇코딩");
 
   // 정리
   for (const r of await db

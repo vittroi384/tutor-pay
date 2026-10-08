@@ -47,8 +47,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const email = session?.user?.email?.toLowerCase();
   if (!email) return null;
   const row = await db.query.users.findFirst({ where: eq(users.email, email) });
+  const inEnv = allowedEmails().includes(email);
   // 비활성화된 계정은 차단. 단 .env ALLOWED_EMAILS 계정은 잠금 방지를 위해 항상 통과
-  if (row && !row.isActive && !allowedEmails().includes(email)) return null;
+  if (row && !row.isActive && !inEnv) return null;
+  // users 행이 없는 세션(삭제된 계정)은 거부. 초기 관리자 목록(.env)만 첫 로그인 전 부트스트랩을 위해 admin 으로 통과
+  if (!row && !inEnv) return null;
   const role = (row?.role as Role | undefined) ?? "admin";
   return { email, name: row?.name ?? session?.user?.name ?? email, role };
 }

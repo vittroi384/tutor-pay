@@ -7,6 +7,7 @@
 ![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-C5F74F?logo=drizzle&logoColor=black)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-EC2%20%C2%B7%20S3-FF9900?logo=amazonwebservices&logoColor=white)
+![CI](https://github.com/vittroi384/tutor-pay/actions/workflows/ci.yml/badge.svg)
 
 출강 수업(방과후·기관 강의)의 **강사 배정 → 단가 계산 → 월별 정산·명세서 → 통합보고서**를 한 곳에서 처리하는 웹앱입니다.
 구글 시트로 관리하던 강사 100여 명·연 수백 건의 강의 데이터를 이전해 실무에서 사용하는 시스템입니다. 2026년 9월 AWS(EC2)로 이전해 운영 중입니다. (공개판은 가상 데이터로 재적재한 사본이라 커밋 이력이 압축되어 있습니다. 지역명·기관명·강사명은 전부 가상이며 실제 지명·실명과 무관합니다)
@@ -63,7 +64,16 @@
 
 ![급여 흐름](assets/flow-payroll.png)
 
-설계 결정 18건, 마이그레이션 3중 검증(수동 절차, CI 미구축), AWS 배포 구성·서버 이전 절차는 [`docs/DESIGN.md`](docs/DESIGN.md) 에 정리했다.
+설계 결정 18건, 마이그레이션 3중 검증, AWS 배포 구성·서버 이전 절차는 [`docs/DESIGN.md`](docs/DESIGN.md) 에 정리했다.
+
+## 테스트 · CI
+
+| 종류 | 명령 | 내용 |
+|---|---|---|
+| 단위 테스트 | `npm run test:unit` | `src/lib/calc.ts` 순수 함수 43건 — 단가표 버전 선택, 지역 그룹 칸 우선, 차시 구간(0.5차시 비례), 세금 구분별 절사, 경고 규칙. DB·Next 런타임 불필요 (`node:test`) |
+| 통합 테스트 | `npm run test:actions` | 서버 액션 전체를 시드 적재 DB 에서 실행(단언 68건). 배정·정규화·스냅샷·정산 잠금·일괄 지급·단가표 버전·교구·삭제 복원·병합. 정리 단계가 감사로그를 삭제하므로 **운영 DB 에서 실행 금지** |
+| CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) | push · PR | ① 타입 검사 + 단위 테스트 ② Postgres 서비스 컨테이너에서 **빈 DB 전체 생성 → 재실행 멱등 → 가상 시드 적재 → 통합 테스트**. 3중 검증 중 "기존 운영 DB 사본 적용"만 배포 전 수동으로 남는다 |
+
 
 ## 로컬 실행
 
