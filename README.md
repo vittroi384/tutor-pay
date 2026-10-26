@@ -34,13 +34,7 @@
 
 ## 아키텍처 (AWS 배포 구성)
 
-```
-사용자 ──HTTPS──▶ Caddy (자동 TLS) ──▶ Next.js (App Router, 서버 액션)
-                     │                        │ Drizzle ORM
-                EC2 (Docker Compose) ─────▶ PostgreSQL 16
-                     │                     (EBS 볼륨 · RDS는 교체 옵션, 현재 미사용)
-                 백업: pg_dump → gzip → S3 sync (주 1회 cron)
-```
+![TutorPay 시스템 아키텍처](assets/architecture.png)
 
 - **EC2 + Docker Compose**: `docker-compose.yml` 하나로 앱·DB·리버스 프록시(Caddy, TLS 자동 발급)까지 기동
 - **RDS 전환 옵션**: 현재 미사용. `DATABASE_URL` 만 RDS 엔드포인트로 바꾸면 됨 (앱은 접속 문자열 외 의존 없음)
