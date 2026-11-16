@@ -160,7 +160,12 @@ export const lectures = pgTable(
     netAmount: integer("net_amount").notNull().default(0),
     // 세금 구분 — 사업소득(3.3%)/기타소득(8.8%)/비과세(0%). 세후 계산에 사용, 강의별 저장
     taxType: text("tax_type").notNull().default("사업소득"),
-    travelFee: integer("travel_fee").notNull().default(0), // 교통비(원) — 세금 계산과 무관, 정산 지급액에 세후와 합산
+    // 교통비 구분 — '실비'(실비지급·비과세) / '정액'(정액지급·3.3% 원천징수). null = 이 기능 이전 기록(기존 계산 유지)
+    travelType: text("travel_type"),
+    // 구간 단가 스냅샷 — 3차시부터 적용된 단가와 경계(없으면 전 차시 동일 단가). 명세서 표기용
+    unitPriceAfter: integer("unit_price_after"),
+    tierLimit: real("tier_limit"),
+    travelFee: integer("travel_fee").notNull().default(0), // 교통비(원) — 강의와 같은 세금 구분으로 원천징수, 지급액 = 세후 + 교통비 세후
     isPaid: boolean("is_paid").notNull().default(false),
     paidAt: ts(),
     isDone: boolean("is_done").notNull().default(false),

@@ -530,7 +530,7 @@ export function ProfileCard({
               <label className="label">이메일</label>
               <input
                 className="input"
-                type="email"
+                type="text"
                 value={d.email}
                 onChange={(e) => setD((x) => ({ ...x, email: e.target.value }))}
                 placeholder="예: name@example.com"

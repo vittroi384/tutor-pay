@@ -1,11 +1,20 @@
 "use client";
 /**
- * 정산 목록 (클라이언트) — 강사별 합계표(세후 내림차순), 검색, 강의 없는 강사 표시, 엑셀, 월 정산 확정/해제(월 탭에서만),
+ * 정산 목록 (클라이언트) — 강사별 합계표(세후 내림차순), 검색, 강의 없는 강사 표시, 엑셀, 월 정산 확정(해제는 관리자만),
+ * 강사 여러 명을 체크해 강의 완료·지급완료 일괄 처리,
  * 행마다 명세서·강의 목록·강사 상세 바로가기.
  */
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { CalendarDays, Lock, LockOpen, Search, User } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCheck,
+  Lock,
+  LockOpen,
+  Search,
+  User,
+} from "lucide-react";
+import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { SummaryStrip } from "@/components/ui/SummaryStrip";
 import { GradeBadge } from "@/components/ui/Chips";
 import { useToast } from "@/components/ui/Toast";
@@ -16,7 +25,7 @@ import {
   periodQuery,
   type Period,
 } from "@/lib/format";
-import { setMonthLock } from "../lectures/actions";
+import { bulkMarkInstructors, setMonthLock } from "../lectures/actions";
 
 /** 강사별 정산 합계 한 줄. payableCount = TutorPay이 지급하는 건수(기관지급 제외), unpaid* = 그중 미지급 */
 export type SettlementRowT = {
@@ -30,7 +39,8 @@ export type SettlementRowT = {
   sessions: number;
   gross: number;
   net: number;
-  travel: number; // 교통비 합계 — 지급액 = net + travel
+  travel: number; // 교통비 합계(세전)
+  travelNet: number; // 교통비 세후 합계 — 지급액 = net + travelNet
   unpaidCount: number;
   unpaidNet: number;
   warn: number;
@@ -41,11 +51,14 @@ export function SettlementView({
   rows,
   lockedMonths,
   canEdit,
+  canUnlock,
 }: {
   period: Period;
   rows: SettlementRowT[];
   lockedMonths: string[];
   canEdit: boolean;
+  /** 관리자 — 정산 확정 해제와 확정된 달 변경이 가능 */
+  canUnlock: boolean;
 }) {
   const { toast } = useToast();
   const ym = period.ym;
@@ -54,6 +67,9 @@ export function SettlementView({
   const [q, setQ] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [pending, start] = useTransition();
+  // 일괄 처리용 선택(강사 id). 확정된 달이 섞여 있으면 관리자만 처리 가능
+  const [sel, setSel] = useState<Set<number>>(new Set());
+  const bulkBlocked = lockedMonths.length > 0 && !canUnlock;
 
   // 표시 행: 검색어 + "강의 없는 강사도 표시" 옵션 적용, 세후 내림차순
   const visible = useMemo(() => {
@@ -80,6 +96,7 @@ export function SettlementView({
       gross: a.gross + r.gross,
       net: a.net + r.net,
       travel: a.travel + r.travel,
+      travelNet: a.travelNet + r.travelNet,
       unpaidCount: a.unpaidCount + r.unpaidCount,
       unpaidNet: a.unpaidNet + r.unpaidNet,
     }),
@@ -89,12 +106,38 @@ export function SettlementView({
       gross: 0,
       net: 0,
       travel: 0,
+      travelNet: 0,
       unpaidCount: 0,
       unpaidNet: 0,
     },
   );
 
-  // 월 정산 확정/해제 (월 탭에서만 노출)
+  // 일괄 처리: 선택한 강사들의 강의 완료 / 미지급 지급완료
+  const selectable = visible.filter((r) => r.count > 0);
+  const picked = selectable.filter((r) => sel.has(r.instructorId));
+  const pickedUnpaid = picked.reduce((a, r) => a + r.unpaidCount, 0);
+  const pickedUnpaidNet = picked.reduce((a, r) => a + r.unpaidNet, 0);
+  const allPicked =
+    selectable.length > 0 && picked.length === selectable.length;
+  const runBulk = (field: "isDone" | "isPaid") =>
+    start(async () => {
+      const r = await bulkMarkInstructors(
+        picked.map((x) => x.instructorId),
+        period.from,
+        period.to,
+        field,
+      );
+      if (r.ok) {
+        toast(
+          field === "isDone"
+            ? `강사 ${picked.length}명 · 강의 ${r.data?.count ?? 0}건을 완료 처리했어요`
+            : `강사 ${picked.length}명 · ${r.data?.count ?? 0}건을 지급완료로 처리했어요`,
+        );
+        setSel(new Set());
+      } else toast(r.error, "error");
+    });
+
+  // 월 정산 확정/해제 (월 탭에서만 노출) — 해제는 관리자만
   const toggleLock = () =>
     start(async () => {
       const r = await setMonthLock(ym, !locked);
@@ -116,10 +159,20 @@ export function SettlementView({
           },
           { label: "세전 합계", value: fmtWon(tot.gross) },
           { label: "원천징수", value: fmtWon(tot.gross - tot.net) },
-          { label: "교통비 합계", value: fmtWon(tot.travel) },
           {
-            label: "지급액(세후+교통비)",
-            value: fmtWon(tot.net + tot.travel),
+            label: tot.travel !== tot.travelNet ? "교통비 세후" : "교통비 합계",
+            value: fmtWon(tot.travelNet),
+            sub:
+              tot.travel !== tot.travelNet
+                ? `세전 ${fmtWon(tot.travel)}`
+                : undefined,
+          },
+          {
+            label:
+              tot.travel !== tot.travelNet
+                ? "지급액(세후+교통비 세후)"
+                : "지급액(세후+교통비)",
+            value: fmtWon(tot.net + tot.travelNet),
             tone: "brand" as const,
           },
           {
@@ -185,17 +238,39 @@ export function SettlementView({
               ? "이 달 엑셀 내려받기"
               : "이 기간 엑셀 내려받기"}
           </a>
-          {canEdit && period.mode === "month" && (
-            <button
-              className={locked ? "btn-secondary" : "btn-primary"}
-              onClick={toggleLock}
-              disabled={pending}
-              title="확정하면 이 달 강의의 등록·수정·삭제·지급 변경이 막힙니다"
-            >
-              {locked ? <LockOpen size={14} /> : <Lock size={14} />}{" "}
-              {locked ? "확정 해제" : "이 달 정산 확정"}
-            </button>
-          )}
+          {canEdit &&
+            period.mode === "month" &&
+            (locked ? (
+              canUnlock ? (
+                <button
+                  className="btn-secondary"
+                  onClick={toggleLock}
+                  disabled={pending}
+                  title="관리자만 확정을 해제할 수 있습니다"
+                >
+                  <LockOpen size={14} /> 확정 해제
+                </button>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[12.5px] whitespace-nowrap text-amber-800"
+                  title="확정된 달의 수정과 확정 해제는 관리자만 할 수 있습니다"
+                >
+                  <Lock size={14} /> 정산 확정됨 · 수정은 관리자만
+                </span>
+              )
+            ) : (
+              <ConfirmButton
+                className="btn-primary"
+                label={
+                  <>
+                    <Lock size={14} /> 이 달 정산 확정
+                  </>
+                }
+                confirmLabel="정말 확정 (이후 관리자만 수정)"
+                onConfirm={toggleLock}
+                disabled={pending}
+              />
+            ))}
           {canEdit && period.mode === "range" && (
             <span className="text-[12px] text-slate-500">
               정산 확정은 월 탭에서 달 단위로 합니다
@@ -204,10 +279,68 @@ export function SettlementView({
         </div>
       </div>
       <div className="card">
-        <div className="table-scroll max-h-[max(420px,calc(100dvh-250px))]">
+        {canEdit && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2 text-[12.5px]">
+            <span className="whitespace-nowrap text-slate-600">
+              선택 <b className="text-slate-800">{picked.length}</b>명
+              <span className="text-slate-400">
+                {" "}
+                · 미지급 {pickedUnpaid}건 · {fmtWon(pickedUnpaidNet)}
+              </span>
+            </span>
+            <button
+              className="btn-secondary btn-sm"
+              disabled={picked.length === 0 || pending || bulkBlocked}
+              onClick={() => runBulk("isDone")}
+              title="선택한 강사의 이 기간 강의를 전부 완료로 표시합니다"
+            >
+              <CheckCheck size={13} /> 강의 완료 처리
+            </button>
+            <ConfirmButton
+              className="btn-primary btn-sm"
+              label={
+                <>
+                  <CheckCheck size={13} /> 지급완료 처리
+                </>
+              }
+              confirmLabel={`정말 ${pickedUnpaid}건 지급완료`}
+              onConfirm={() => runBulk("isPaid")}
+              disabled={pickedUnpaid === 0 || pending || bulkBlocked}
+            />
+            <span className="text-slate-400">
+              {bulkBlocked
+                ? "정산 확정된 달은 관리자만 처리할 수 있습니다"
+                : "왼쪽 체크박스로 강사를 고르세요 (맨 위 = 전체 선택)"}
+            </span>
+          </div>
+        )}
+        <div className="table-scroll max-h-[max(420px,calc(100dvh-290px))]">
           <table className="dense w-full min-w-[900px] text-[13px]">
             <thead>
               <tr>
+                {canEdit && (
+                  <th className="w-8 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-slate-700"
+                      checked={allPicked}
+                      ref={(el) => {
+                        if (el)
+                          el.indeterminate = picked.length > 0 && !allPicked;
+                      }}
+                      disabled={selectable.length === 0}
+                      onChange={() =>
+                        setSel(
+                          allPicked
+                            ? new Set()
+                            : new Set(selectable.map((r) => r.instructorId)),
+                        )
+                      }
+                      aria-label="전체 선택"
+                      title="보이는 강사 전체 선택/해제"
+                    />
+                  </th>
+                )}
                 <th className="text-left">강사</th>
                 <th className="text-left">지역</th>
                 <th className="text-right">강의 횟수</th>
@@ -223,7 +356,10 @@ export function SettlementView({
             <tbody>
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-slate-500">
+                  <td
+                    colSpan={canEdit ? 11 : 10}
+                    className="py-10 text-center text-slate-500"
+                  >
                     이 기간에 정산할 강의가 없습니다.
                   </td>
                 </tr>
@@ -233,6 +369,26 @@ export function SettlementView({
                   key={r.instructorId}
                   className={r.count === 0 ? "text-slate-400" : ""}
                 >
+                  {canEdit && (
+                    <td className="text-center">
+                      {r.count > 0 && (
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-slate-700"
+                          checked={sel.has(r.instructorId)}
+                          onChange={(e) =>
+                            setSel((prev) => {
+                              const n = new Set(prev);
+                              if (e.target.checked) n.add(r.instructorId);
+                              else n.delete(r.instructorId);
+                              return n;
+                            })
+                          }
+                          aria-label={`${r.name} 선택`}
+                        />
+                      )}
+                    </td>
+                  )}
                   <td>
                     <Link
                       href={`/settlement/${r.instructorId}?${pq}`}
@@ -262,10 +418,21 @@ export function SettlementView({
                   <td className="num">{fmtWon(r.gross)}</td>
                   <td className="num">{fmtWon(r.net)}</td>
                   <td className="num text-slate-600">
-                    {r.travel ? fmtWon(r.travel) : "-"}
+                    {r.travel ? (
+                      <>
+                        {fmtWon(r.travelNet)}
+                        {r.travel !== r.travelNet && (
+                          <div className="text-[10px] leading-tight text-slate-400">
+                            세전 {fmtWon(r.travel)}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      "-"
+                    )}
                   </td>
                   <td className="num font-semibold text-slate-800">
-                    {fmtWon(r.net + r.travel)}
+                    {fmtWon(r.net + r.travelNet)}
                   </td>
                   <td className="whitespace-nowrap">
                     {r.count === 0 ? (
@@ -318,14 +485,14 @@ export function SettlementView({
             {active.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 font-semibold">
-                  <td colSpan={2}>합계 ({active.length}명)</td>
+                  <td colSpan={canEdit ? 3 : 2}>합계 ({active.length}명)</td>
                   <td className="num">{tot.count}</td>
                   <td className="num">{fmtSessions(tot.sessions)}</td>
                   <td className="num">{fmtWon(tot.gross)}</td>
                   <td className="num">{fmtWon(tot.net)}</td>
-                  <td className="num">{fmtWon(tot.travel)}</td>
+                  <td className="num">{fmtWon(tot.travelNet)}</td>
                   <td className="num text-brand-700">
-                    {fmtWon(tot.net + tot.travel)}
+                    {fmtWon(tot.net + tot.travelNet)}
                   </td>
                   <td colSpan={2} className="text-[12px] text-slate-500">
                     미지급 {tot.unpaidCount}건 · {fmtWon(tot.unpaidNet)}

@@ -164,7 +164,7 @@ export default async function InstructorDetailPage({
             <div className="border-b border-slate-200 px-4 py-2.5 text-[13px] font-semibold text-slate-700">
               연도별 누계
             </div>
-            <table className="dense w-full min-w-[360px] text-[13px]">
+            <table className="dense w-full text-[13px] whitespace-nowrap">
               <thead>
                 <tr>
                   <th className="text-left">연도</th>

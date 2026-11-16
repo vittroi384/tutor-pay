@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Package } from "lucide-react";
 import { Drawer } from "@/components/ui/Drawer";
+import { useNumericInputMode } from "@/components/ui/useNumericInputMode";
 import { Combobox, type ComboOption } from "@/components/ui/Combobox";
 import { GradeBadge } from "@/components/ui/Chips";
 import {
@@ -19,6 +20,11 @@ import {
   type PayTypeRule,
   DEFAULT_TAX_TYPE,
   TAX_TYPES,
+  travelNetOf,
+  isTravelTaxed,
+  TRAVEL_TYPES,
+  DEFAULT_TRAVEL_TYPE,
+  isStaffGrade,
 } from "@/lib/calc";
 import { currentYm, fmtDateKo, fmtWon, todaySeoul } from "@/lib/format";
 import type { EquipmentRow, LectureRow, MasterData } from "@/lib/types";
@@ -86,10 +92,21 @@ export function LectureForm({
   const [note, setNote] = useState(lecture?.note ?? "");
   // 교통비(원) — 기본 0, 수기 입력
   const [travelFee, setTravelFee] = useState(String(lecture?.travelFee ?? 0));
+  const travelFeeNum = Number(travelFee.replace(/,/g, "")) || 0;
+  // 교통비 구분 — 실비(비과세)/정액(3.3%). 이전 기록을 수정할 때는 지금까지와 같은 결과가 나오는 쪽으로 시작
+  const [travelType, setTravelType] = useState<string>(
+    lecture?.travelType ??
+      (lecture && (lecture.travelFee ?? 0) > 0 && !isTravelTaxed(lecture.date)
+        ? "실비"
+        : DEFAULT_TRAVEL_TYPE),
+  );
   // 세금 구분 — 기본 사업소득 3.3%, 필요할 때만 기타소득/비과세로 전환
   const [taxType, setTaxType] = useState<string>(
     lecture?.taxType ?? DEFAULT_TAX_TYPE,
   );
+  // 숫자 칸 키패드 힌트는 터치 기기에서만 (데스크톱 한글 입력기 영문 전환 방지)
+  const numericMode = useNumericInputMode("numeric");
+  const decimalMode = useNumericInputMode("decimal");
   // 강사 배정 목록: 등록 모드에서는 여러 명, 수정 모드에서는 1명(해당 강의의 강사) 고정
   const [assignments, setAssignments] = useState<Assignment[]>(() => [
     {
@@ -161,9 +178,38 @@ export function LectureForm({
     isActive: p.isActive,
   }));
   const isManual = isManualPayType(payType, rules);
+  /** 그 줄의 강사가 사내 직원(내부 인력 등급)인지 — 수동기입 단가를 비워도 되는 대상 */
+  const isStaffRow = (instructorId: number | null) =>
+    isStaffGrade(
+      master.instructors.find((i) => i.id === instructorId)?.gradeCode,
+    );
   const rateTable = findRateTable(master.rateTables, date);
   const sessionsNum = sessions.trim() === "" ? null : Number(sessions);
 
+  // 강사 줄 추가(스택형) — 새 줄이 맨 위에 생기고 기존 줄은 아래로 내려감. 새 줄 강사 검색칸에 바로 포커스
+  const addAssignment = () => {
+    const key = seq++;
+    setAssignments((prev) => [
+      {
+        key,
+        instructorId: null,
+        role: prev.length ? "보조강사" : "주강사",
+        manualPrice: "",
+      },
+      ...prev,
+    ]);
+    setTimeout(() => {
+      const row = document.querySelector<HTMLElement>(
+        `[data-assign-row="${key}"]`,
+      );
+      row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const input = row?.querySelector<HTMLInputElement>("input");
+      if (input) {
+        input.dataset.skipOpen = "1"; // 커서만 두고 목록은 펼치지 않음
+        input.focus();
+      }
+    }, 50);
+  };
   const previews = assignments.map((a) => {
     const inst = master.instructors.find((i) => i.id === a.instructorId);
     const manual =
@@ -206,6 +252,7 @@ export function LectureForm({
     note: note.trim() || null,
     travelFee: Number(travelFee.replace(/,/g, "")) || 0,
     taxType,
+    travelType,
   });
 
   // 저장 전 클라이언트 검증 (서버도 같은 규칙으로 다시 검증한다)
@@ -225,11 +272,14 @@ export function LectureForm({
     const ids = assignments.map((a) => a.instructorId).filter(Boolean);
     if (new Set(ids).size !== ids.length)
       return "같은 강사가 두 번 배정되어 있어요.";
+    // 수동기입 단가는 배정된 강사만 필수 — 사내 직원은 강사료가 없어 비워도 된다
     if (
       isManual &&
       assignments.some(
         (a) =>
-          (a.instructorId && a.manualPrice.trim() === "") ||
+          (a.instructorId &&
+            !isStaffRow(a.instructorId) &&
+            a.manualPrice.trim() === "") ||
           Number.isNaN(Number(a.manualPrice.replace(/,/g, ""))),
       )
     )
@@ -370,61 +420,112 @@ export function LectureForm({
         <div className="col-span-1 sm:col-span-2">
           <label className="label">차시 (0.5 단위)</label>
           <input
-            type="number"
-            step="0.5"
-            min="0"
+            type="text"
+            inputMode={decimalMode}
             className="input"
             value={sessions}
-            onChange={(e) => setSessions(e.target.value)}
+            onChange={(e) => setSessions(e.target.value.replace(/[^\d.]/g, ""))}
             placeholder="예: 2"
           />
         </div>
         <div className="col-span-1 sm:col-span-2">
           <label className="label">교육 인원</label>
           <input
-            type="number"
-            step="1"
-            min="0"
+            type="text"
+            inputMode={numericMode}
             className="input"
             value={headcount}
-            onChange={(e) => setHeadcount(e.target.value)}
+            onChange={(e) => setHeadcount(e.target.value.replace(/\D/g, ""))}
             placeholder="명 (선택 입력)"
           />
         </div>
         <div className="col-span-1 sm:col-span-2">
-          <label className="label">
-            교통비 <span className="font-normal text-slate-400">(원)</span>
+          {/* 계산 결과는 라벨 줄 오른쪽에만 표시하고 구분 버튼은 입력칸 옆에 고정 — 입력해도 칸 높이가 그대로라 아래 칸이 밀리지 않음 */}
+          <label className="label flex items-center justify-between gap-2">
+            <span className="shrink-0">
+              교통비 <span className="font-normal text-slate-400">(원)</span>
+            </span>
+            {travelFeeNum > 0 && (
+              <span className="truncate text-[11px] leading-none font-normal text-slate-500">
+                {travelType === "실비" ? (
+                  "비과세 · 전액 지급"
+                ) : (
+                  <>
+                    세후{" "}
+                    <b className="text-slate-700">
+                      {fmtWon(
+                        travelNetOf(travelFeeNum, taxType, date, travelType),
+                      )}
+                    </b>
+                  </>
+                )}
+              </span>
+            )}
           </label>
-          <input
-            type="text"
-            inputMode="numeric"
-            className="input text-right"
-            value={travelFee}
-            onChange={(e) =>
-              setTravelFee(e.target.value.replace(/[^\d,]/g, ""))
-            }
-            onBlur={() =>
-              setTravelFee(String(Number(travelFee.replace(/,/g, "")) || 0))
-            }
-            title="기본 0원 — 지급 시 세후 금액에 더해집니다 (세금 계산과 무관)"
-          />
+          <div className="flex items-stretch gap-1">
+            <div
+              className="flex shrink-0 rounded-lg border border-slate-200 p-0.5"
+              role="group"
+              aria-label="교통비 구분"
+            >
+              {TRAVEL_TYPES.map((t) => (
+                <button
+                  key={t.code}
+                  type="button"
+                  onClick={() => setTravelType(t.code)}
+                  title={
+                    t.code === "실비"
+                      ? "실비지급 — 비과세(전액 지급)"
+                      : "정액지급 — 3.3% 원천징수"
+                  }
+                  className={`rounded-md px-2 text-[12px] transition-colors ${
+                    travelType === t.code
+                      ? "bg-slate-700 font-semibold text-white"
+                      : "text-slate-500 hover:bg-slate-50"
+                  }`}
+                >
+                  {t.code}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              inputMode={numericMode}
+              className="input min-w-0 flex-1 text-right"
+              value={travelFee}
+              onChange={(e) =>
+                setTravelFee(e.target.value.replace(/[^\d,]/g, ""))
+              }
+              onBlur={() =>
+                setTravelFee(String(Number(travelFee.replace(/,/g, "")) || 0))
+              }
+              title="기본 0원 — 실비는 비과세(전액), 정액은 3.3% 원천징수 후 지급액에 더해집니다"
+            />
+          </div>
         </div>
         <div className="col-span-1 sm:col-span-2">
-          <label className="label">세금 구분</label>
-          <div className="flex rounded-lg border border-slate-200 p-0.5">
+          <label className="label flex items-center justify-between gap-2">
+            <span className="shrink-0">세금 구분</span>
+            <span className="truncate text-[11px] leading-none font-normal text-slate-500">
+              {taxType === "비과세"
+                ? "원천징수 없음"
+                : `원천징수 ${taxType === "기타소득" ? "8.8%" : "3.3%"}`}
+            </span>
+          </label>
+          <div className="flex h-8 rounded-lg border border-slate-200 p-0.5">
             {TAX_TYPES.map((t) => (
               <button
                 key={t.code}
                 type="button"
                 onClick={() => setTaxType(t.code)}
-                className={`flex-1 rounded-md px-1 py-1.5 text-[12px] transition-colors ${
+                className={`flex flex-1 items-center justify-center rounded-md px-1 text-[12px] whitespace-nowrap transition-colors ${
                   taxType === t.code
                     ? "bg-brand-500 font-semibold text-white"
                     : "text-slate-500 hover:bg-slate-50"
                 }`}
                 title={t.label}
               >
-                {t.label}
+                {t.code}
               </button>
             ))}
           </div>
@@ -477,8 +578,7 @@ export function LectureForm({
           <label className="label">
             교구 대여 (선택){" "}
             <span className="font-normal text-slate-400">
-              — 저장하면 교구 관리에 대여 기록이 생기고 이 강의와 연결됩니다
-              (대여처 = 기관, 출고일 = 강의 날짜)
+              — 저장하면 교구 관리 대여 기록으로 연결돼요 (대여처 = 기관)
             </span>
           </label>
           {mode === "edit" && linkedRentals > 0 && (
@@ -525,14 +625,19 @@ export function LectureForm({
                       />
                     </div>
                     <input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode={numericMode}
                       className="input w-20 text-right"
                       value={it.quantity}
                       onChange={(e) =>
                         setEqItems(
                           eqItems.map((x, j) =>
-                            j === i ? { ...x, quantity: e.target.value } : x,
+                            j === i
+                              ? {
+                                  ...x,
+                                  quantity: e.target.value.replace(/\D/g, ""),
+                                }
+                              : x,
                           ),
                         )
                       }
@@ -606,20 +711,7 @@ export function LectureForm({
             {mode === "edit" ? "강사" : "강사 배정 (강사별로 1건씩 생성)"}
           </div>
           {mode !== "edit" && (
-            <button
-              className="btn-secondary btn-sm"
-              onClick={() =>
-                setAssignments([
-                  ...assignments,
-                  {
-                    key: seq++,
-                    instructorId: null,
-                    role: assignments.length ? "보조강사" : "주강사",
-                    manualPrice: "",
-                  },
-                ])
-              }
-            >
+            <button className="btn-secondary btn-sm" onClick={addAssignment}>
               <Plus size={13} /> 강사 추가
             </button>
           )}
@@ -630,6 +722,7 @@ export function LectureForm({
             return (
               <div
                 key={a.key}
+                data-assign-row={a.key}
                 className="rounded-md border border-slate-200 bg-slate-50/60 p-2.5"
               >
                 <div className="grid grid-cols-12 items-end gap-2">
@@ -674,34 +767,46 @@ export function LectureForm({
                   </div>
                   {isManual ? (
                     <div className="col-span-6 sm:col-span-3">
-                      <label className="label">단가({payType}) *</label>
+                      <label className="label">
+                        단가({payType}){isStaffRow(a.instructorId) ? "" : " *"}
+                      </label>
                       <input
-                        type="number"
-                        step="1000"
-                        min="0"
+                        type="text"
+                        inputMode={numericMode}
                         className="input"
                         value={a.manualPrice}
                         onChange={(e) =>
                           setAssignments(
                             assignments.map((x) =>
                               x.key === a.key
-                                ? { ...x, manualPrice: e.target.value }
+                                ? {
+                                    ...x,
+                                    manualPrice: e.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  }
                                 : x,
                             ),
                           )
                         }
-                        placeholder="원"
+                        placeholder={
+                          isStaffRow(a.instructorId) ? "비워도 됨" : "원"
+                        }
+                        title={
+                          isStaffRow(a.instructorId)
+                            ? "사내 직원은 강사료가 없어 단가를 비워둬도 됩니다"
+                            : undefined
+                        }
                       />
                     </div>
                   ) : (
-                    <div className="col-span-6 pb-1.5 text-[12px] text-slate-500 sm:col-span-3">
-                      {p.inst ? (
-                        <span>
+                    <div className="col-span-6 truncate pb-2 text-[12px] whitespace-nowrap text-slate-500 sm:col-span-3">
+                      {p.inst && (
+                        <>
                           <GradeBadge gradeCode={p.inst.gradeCode} full /> ·{" "}
                           {payType || "지급유형?"} · {a.role}
-                        </span>
-                      ) : (
-                        <span>강사를 선택하면 단가가 계산돼요</span>
+                        </>
                       )}
                     </div>
                   )}
@@ -732,8 +837,23 @@ export function LectureForm({
                           ⚠ 등급 미등록 강사 — 단가 0
                         </span>
                       )}
-                    단가 {fmtWon(p.unitPrice)} × {sessionsNum ?? "?"}차시 = 세전{" "}
-                    {fmtWon(p.grossAmount)}
+                    {!p.inst && !isManual ? (
+                      <span className="text-slate-400">
+                        강사를 선택하면 단가가 계산돼요
+                      </span>
+                    ) : (
+                      <>
+                        단가 {fmtWon(p.unitPrice)}
+                        {p.unitPriceAfter != null && (
+                          <span className="text-slate-500">
+                            {" "}
+                            (3차시~ {fmtWon(p.unitPriceAfter)})
+                          </span>
+                        )}{" "}
+                        × {sessionsNum ?? "?"}차시 = 세전{" "}
+                        {fmtWon(p.grossAmount)}
+                      </>
+                    )}
                   </span>
                   <span>
                     세후 <b>{fmtWon(p.netAmount)}</b>{" "}
@@ -775,6 +895,7 @@ function TimeField({
   const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const numericMode = useNumericInputMode("numeric");
   useEffect(() => setText(value), [value]);
   useEffect(() => {
     if (!open) return;
@@ -824,7 +945,7 @@ function TimeField({
         <input
           className="input rounded-r-none"
           placeholder="예: 14:30"
-          inputMode="numeric"
+          inputMode={numericMode}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={(e) => commit(e.target.value)}

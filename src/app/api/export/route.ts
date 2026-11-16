@@ -27,7 +27,7 @@ import {
   getGrades,
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/session";
-import { rateColumns } from "@/lib/calc";
+import { rateColumns, travelNetOf } from "@/lib/calc";
 import { APP_NAME } from "@/lib/constants";
 import type { LectureRow } from "@/lib/types";
 
@@ -41,9 +41,12 @@ const LECTURE_HEADER = [
   "역할",
   "지급유형",
   "단가",
+  "3차시~ 단가",
   "세전 합계",
   "세후 합계",
   "교통비",
+  "교통비 구분",
+  "교통비 세후",
   "지급 여부",
   "완료",
   "교육 인원",
@@ -70,9 +73,12 @@ function lectureSheet(wb: ExcelJS.Workbook, name: string, rows: LectureRow[]) {
       l.role,
       l.payType ?? "",
       l.unitPrice,
+      l.unitPriceAfter ?? "",
       l.grossAmount,
       l.netAmount,
       l.travelFee,
+      l.travelFee ? (l.travelType ?? "") : "",
+      travelNetOf(l.travelFee, l.taxType, l.date, l.travelType),
       l.isPaid ? "TRUE" : "FALSE",
       l.isDone ? "완료" : "",
       l.headcount ?? "",
@@ -85,10 +91,11 @@ function lectureSheet(wb: ExcelJS.Workbook, name: string, rows: LectureRow[]) {
   }
   ws.columns.forEach((c, i) => {
     c.width =
-      [12, 12, 13, 22, 18, 6, 9, 11, 10, 12, 12, 9, 6, 8, 9, 10, 30, 16, 9][
-        i
-      ] ?? 12;
-    if ([8, 9, 10, 11, 16].includes(i)) c.numFmt = "#,##0";
+      [
+        12, 12, 13, 22, 18, 6, 9, 11, 10, 11, 12, 12, 9, 9, 10, 8, 6, 8, 9, 10,
+        30, 16, 9,
+      ][i] ?? 12;
+    if ([8, 9, 10, 11, 12, 14, 19].includes(i)) c.numFmt = "#,##0";
   });
   ws.views = [{ state: "frozen", ySplit: 1 }];
   return ws;

@@ -30,6 +30,11 @@ export type CurrentUser = {
   role: Role;
 };
 
+/** 정산 확정 해제와 확정된 달 수정이 가능한 권한인지 — 관리자만 (실무자는 확정까지만 가능) */
+export function canOverrideLock(role: Role): boolean {
+  return role === "admin";
+}
+
 const LOCAL_ROLE = (process.env.LOCAL_ROLE as Role) || "admin"; // 개발용: LOCAL_ROLE=viewer 로 조회 전용 화면 미리보기
 const LOCAL_USER: CurrentUser = {
   email: "local@example.dev",

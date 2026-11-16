@@ -1,9 +1,9 @@
 /**
- * 서버 액션 통합 테스트 (시드를 적재한 로컬 DB 전용 — 정리 단계가 감사로그를 삭제하므로 운영 DB 금지)
+ * 서버 액션 통합 테스트 (실제 DB 사용, 마지막에 만든 데이터는 정리)
  *   AUTH_DISABLED=true DATABASE_URL=... npx tsx -r ./scripts/test/shim.cjs scripts/test/actions.test.ts
  */
 import assert from "node:assert/strict";
-import fs from "node:fs";
+import { lectureWarnings, travelNetOf } from "../../src/lib/calc";
 import { and, eq, like, sql, desc } from "drizzle-orm";
 import { db } from "../../src/db";
 import {
@@ -25,6 +25,8 @@ import {
   setMonthLock,
   toggleLecture,
   updateLecture,
+  bulkToggleLectures,
+  bulkMarkInstructors,
 } from "../../src/app/(app)/lectures/actions";
 import {
   createInstitution,
@@ -144,7 +146,7 @@ async function main() {
     travelFee: 0,
     institutionId: org,
     institutionName: null,
-    content: "로봇", // 공개 시드의 별칭 (data/tutorpay-seed.json contents[].aliases)
+    content: "투닝",
     payType: "관외",
     isDone: false,
     isPaid: false,
@@ -170,8 +172,8 @@ async function main() {
   assert.equal(rA.netAmount, Math.floor((160000 * 967) / 1000)); // 154,720
   assert.equal(rB.unitPrice, 0, "B등급 단가는 0원 (미사용)");
   assert.equal(rB.netAmount, 0);
-  assert.equal(rA.content, "로봇코딩", "별칭 '로봇' → 표준명 정규화");
-  assert.equal(rA.contentRaw, "로봇");
+  assert.equal(rA.content, "AI 투닝", "별칭 '투닝' → 표준명 정규화");
+  assert.equal(rA.contentRaw, "투닝");
 
   // 검증 규칙
   fail(
@@ -298,7 +300,19 @@ async function main() {
 
   // 정산 확정(잠금) → 수정·삭제·생성 차단 → 해제
   ok(await setMonthLock("2031-03", true), "잠금");
+  process.env.LOCAL_ROLE = "staff"; // 실무자 계정으로
   fail(await toggleLecture(rB.id, "isPaid", true), "잠긴 달 토글", "잠금");
+  fail(await toggleLecture(rB.id, "isDone", true), "잠긴 달 완료 체크", "잠금");
+  fail(
+    await bulkToggleLectures([rB.id], "isDone", true),
+    "잠긴 달 일괄 완료",
+    "잠금",
+  );
+  fail(
+    await bulkMarkInstructors([iB], "2031-03-01", "2031-03-31", "isDone"),
+    "잠긴 달 강사 일괄",
+    "관리자",
+  );
   fail(await deleteLecture(rB.id), "잠긴 달 삭제", "잠금");
   fail(
     await createLectures({
@@ -308,7 +322,23 @@ async function main() {
     "잠긴 달 생성",
     "잠금",
   );
-  ok(await setMonthLock("2031-03", false), "잠금 해제");
+  fail(
+    await setMonthLock("2031-03", false),
+    "실무자의 확정 해제 거부",
+    "관리자",
+  );
+  process.env.LOCAL_ROLE = "admin"; // 관리자 계정으로
+  {
+    const cur = (
+      await db.select().from(lectures).where(eq(lectures.id, rB.id))
+    )[0];
+    ok(
+      await toggleLecture(rB.id, "isDone", !cur.isDone),
+      "관리자는 확정된 달도 수정 가능",
+    );
+    ok(await toggleLecture(rB.id, "isDone", cur.isDone), "원래대로");
+  }
+  ok(await setMonthLock("2031-03", false), "잠금 해제(관리자)");
   ok(await toggleLecture(rB.id, "isPaid", true), "해제 후 토글");
 
   // 단가표 새 버전(2031-04-01 적용, A 관외 주강사 70,000) → 4월 강의에만 반영, 3월 강의는 그대로
@@ -631,6 +661,8 @@ async function main() {
     const t1 = await mk({ sessions: 4 }, tierInst.id);
     assert.equal(t1.grossAmount, 160000, "관내 주 4차시 = 5+5+3+3만");
     assert.equal(t1.netAmount, 154720, "관내 주 4차시 세후");
+    assert.equal(t1.unitPriceAfter, 30000, "구간 단가 스냅샷(3차시~ 3만)");
+    assert.equal(t1.tierLimit, 2, "구간 경계 스냅샷");
     const t2 = await mk({ sessions: 2.5 }, tierInst.id);
     assert.equal(
       t2.grossAmount,
@@ -639,6 +671,7 @@ async function main() {
     );
     const t3 = await mk({ sessions: 4, role: "보조강사" }, tierInst.id);
     assert.equal(t3.grossAmount, 120000, "관내 보조 4차시 = 3만×4 일괄");
+    assert.equal(t3.unitPriceAfter, null, "일괄 단가는 구간 스냅샷 없음");
     const [gInst] = await db
       .insert(instructors)
       .values({ name: tag + "나래검증", gradeId: gradeA!.id, region: "나래" })
@@ -733,6 +766,277 @@ async function main() {
       "세금 구분",
     );
     ok(await deleteLecture(t2.id), "세금 케이스 정리");
+  }
+
+  // ---- 교통비 원천징수: 세금 구분과 같은 세율 ----
+  assert.equal(travelNetOf(20000, "사업소득"), 19340, "교통비 3.3% 공제");
+  assert.equal(travelNetOf(20000, "기타소득"), 18240, "교통비 8.8% 공제");
+  assert.equal(travelNetOf(20000, "비과세"), 20000, "비과세 교통비는 그대로");
+  assert.equal(travelNetOf(0, null), 0, "교통비 0");
+  assert.equal(
+    travelNetOf(20000, "사업소득", "2026-09-30"),
+    20000,
+    "적용일 전 강의는 교통비 전액",
+  );
+  assert.equal(
+    travelNetOf(20000, "사업소득", "2026-10-01"),
+    19340,
+    "적용일부터 공제",
+  );
+  assert.equal(
+    travelNetOf(20000, "사업소득", "2026-10-05", "실비"),
+    20000,
+    "실비지급 = 비과세 전액",
+  );
+  assert.equal(
+    travelNetOf(20000, "기타소득", "2026-10-05", "정액"),
+    19340,
+    "정액지급 = 3.3% (강의 세금 구분과 무관)",
+  );
+  assert.equal(
+    travelNetOf(20000, "사업소득", "2026-09-01", "정액"),
+    19340,
+    "구분이 있으면 날짜와 무관하게 구분대로",
+  );
+  assert.equal(
+    travelNetOf(20000, "사업소득", "2026-09-01", null),
+    20000,
+    "구분 없는 이전 기록(9월)은 기존대로 전액",
+  );
+  {
+    const mkTravel = async (travelType: string | null | undefined) => {
+      const r = await createLectures({
+        ...common,
+        date: "2026-10-20",
+        payType: "관내",
+        travelFee: 20000,
+        travelType,
+        assignments: [{ instructorId: iA, role: "주강사", manualPrice: null }],
+      } as Parameters<typeof createLectures>[0]);
+      assert.ok(
+        r.ok,
+        "교통비 구분 등록: " + travelType + (r.ok ? "" : " → " + r.error),
+      );
+      const row = (
+        await db
+          .select()
+          .from(lectures)
+          .where(and(eq(lectures.note, tag), eq(lectures.date, "2026-10-20")))
+      )[0];
+      ok(await deleteLecture(row.id), "교통비 구분 케이스 정리");
+      return row;
+    };
+    assert.equal((await mkTravel("실비")).travelType, "실비", "실비 저장");
+    assert.equal((await mkTravel("정액")).travelType, "정액", "정액 저장");
+    assert.equal(
+      (await mkTravel(undefined)).travelType,
+      "정액",
+      "교통비가 있고 구분 미지정이면 정액",
+    );
+    fail(
+      await createLectures({
+        ...common,
+        date: "2026-10-20",
+        payType: "관내",
+        travelFee: 20000,
+        travelType: "이상한값",
+        assignments: [{ instructorId: iA, role: "주강사", manualPrice: null }],
+      } as Parameters<typeof createLectures>[0]),
+      "잘못된 교통비 구분 거부",
+      "교통비 구분",
+    );
+  }
+
+  // ---- 일괄 처리: 날짜 묶음 완료/지급 + 정산 화면 강사 선택 일괄 ----
+  {
+    ok(
+      await createLectures({
+        ...common,
+        date: "2031-08-05",
+        payType: "관내",
+        assignments: [
+          { instructorId: iA, role: "주강사", manualPrice: null },
+          { instructorId: iB, role: "보조강사", manualPrice: null },
+        ],
+      }),
+      "일괄용 강의 2건",
+    );
+    ok(
+      await createLectures({
+        ...common,
+        date: "2031-08-05",
+        payType: "기관지급",
+        assignments: [{ instructorId: iA, role: "주강사", manualPrice: null }],
+      }),
+      "일괄용 기관지급 1건",
+    );
+    const rowsOf = () =>
+      db
+        .select()
+        .from(lectures)
+        .where(and(eq(lectures.note, tag), eq(lectures.date, "2031-08-05")));
+    let rs = await rowsOf();
+    assert.equal(rs.length, 3, "일괄 대상 3건");
+    const ids = rs.map((r) => r.id);
+    const payable = rs.filter(
+      (r) => r.payType !== "기관지급" && r.netAmount > 0,
+    ).length;
+    assert.ok(payable >= 1, "지급 대상이 1건 이상");
+    assert.equal(
+      ok(await bulkToggleLectures(ids, "isDone", true), "날짜 일괄 완료").count,
+      3,
+    );
+    const p1 = ok(
+      await bulkToggleLectures(ids, "isPaid", true),
+      "날짜 일괄 지급",
+    );
+    assert.equal(p1.count, payable, "지급 대상만 지급 체크");
+    assert.equal(p1.skipped, 3 - payable, "기관지급·세후 0원은 건너뜀");
+    rs = await rowsOf();
+    assert.ok(
+      rs.every((r) => r.isDone),
+      "전부 완료",
+    );
+    assert.equal(rs.filter((r) => r.isPaid).length, payable);
+    assert.equal(
+      ok(await bulkToggleLectures(ids, "isPaid", false), "날짜 일괄 지급 해제")
+        .count,
+      payable,
+    );
+    assert.equal(
+      ok(await bulkToggleLectures(ids, "isDone", false), "날짜 일괄 완료 해제")
+        .count,
+      3,
+    );
+    assert.equal(
+      ok(
+        await bulkMarkInstructors(
+          [iA, iB],
+          "2031-08-01",
+          "2031-08-31",
+          "isDone",
+        ),
+        "강사 선택 일괄 완료",
+      ).count,
+      3,
+    );
+    assert.equal(
+      ok(
+        await bulkMarkInstructors(
+          [iA, iB],
+          "2031-08-01",
+          "2031-08-31",
+          "isPaid",
+        ),
+        "강사 선택 일괄 지급",
+      ).count,
+      payable,
+    );
+    assert.equal(
+      ok(
+        await bulkMarkInstructors(
+          [iA, iB],
+          "2031-08-01",
+          "2031-08-31",
+          "isPaid",
+        ),
+        "다시 누르면 0건",
+      ).count,
+      0,
+    );
+    fail(
+      await bulkMarkInstructors([], "2031-08-01", "2031-08-31", "isPaid"),
+      "강사 미선택 거부",
+      "선택",
+    );
+    for (const r of rs) ok(await deleteLecture(r.id), "일괄 케이스 정리");
+  }
+
+  // ---- 사내 직원(내부 인력 등급): 수동기입 단가 없이 등록 가능 + '단가가 비어 있음' 경고 없음 ----
+  {
+    const gStaff = grades.find((g) => g.code === "연구원")!.id;
+    const [staff] = await db
+      .insert(instructors)
+      .values({ name: tag + "직원검증", gradeId: gStaff })
+      .returning();
+    const manualBase = { ...common, date: "2031-09-03", payType: "수동기입" };
+    ok(
+      await createLectures({
+        ...manualBase,
+        assignments: [
+          { instructorId: staff.id, role: "주강사", manualPrice: null },
+        ],
+      }),
+      "사내 직원은 수동기입 단가 없이 등록",
+    );
+    const sRow = (
+      await db
+        .select()
+        .from(lectures)
+        .where(and(eq(lectures.note, tag), eq(lectures.date, "2031-09-03")))
+    )[0];
+    assert.equal(sRow.unitPrice, 0, "직원 수동기입 단가 0");
+    assert.equal(sRow.netAmount, 0, "직원 수동기입 세후 0");
+    assert.deepEqual(
+      lectureWarnings({
+        instructorId: staff.id,
+        payType: "수동기입",
+        sessions: 3,
+        gradeCode: "연구원",
+        manualPrice: null,
+        unitPrice: 0,
+      }),
+      [],
+      "사내 직원은 '단가가 비어 있음' 경고 없음",
+    );
+    assert.ok(
+      lectureWarnings({
+        instructorId: iA,
+        payType: "수동기입",
+        sessions: 3,
+        gradeCode: "A등급",
+        manualPrice: null,
+        unitPrice: 0,
+      }).some((w) => w.includes("단가가 비어")),
+      "일반 강사는 경고 유지",
+    );
+    ok(
+      await updateLecture(sRow.id, {
+        ...manualBase,
+        instructorId: staff.id,
+        role: "보조강사",
+        manualPrice: null,
+      }),
+      "직원 강의는 단가 없이 수정 가능",
+    );
+    fail(
+      await updateLecture(sRow.id, {
+        ...manualBase,
+        instructorId: iA,
+        role: "주강사",
+        manualPrice: null,
+      }),
+      "일반 강사로 바꾸면 단가 필수",
+      "단가",
+    );
+    ok(
+      await createLectures({
+        ...manualBase,
+        date: "2031-09-04",
+        assignments: [],
+      }),
+      "미배정 수동기입은 단가 없이 등록",
+    );
+    const uRow = (
+      await db
+        .select()
+        .from(lectures)
+        .where(and(eq(lectures.note, tag), eq(lectures.date, "2031-09-04")))
+    )[0];
+    assert.equal(uRow.instructorId, null, "미배정으로 저장");
+    ok(await deleteLecture(sRow.id), "직원 케이스 정리");
+    ok(await deleteLecture(uRow.id), "미배정 수동기입 정리");
+    await deleteInstructor(staff.id);
   }
 
   // ---- 강사 미배정: 등록 → 목록 ⚠ → 수정에서 지정 ----
@@ -964,7 +1268,7 @@ async function main() {
   );
   assert.equal(renamed.renamed, 1);
   const tuning = await db.query.contents.findFirst({
-    where: eq(contents.name, "로봇코딩"),
+    where: eq(contents.name, "AI 투닝"),
   });
   const m2 = ok(await mergeContents(newContent!.id, tuning!.id), "콘텐츠 병합");
   assert.equal(m2.moved, 1);
@@ -974,7 +1278,7 @@ async function main() {
       .from(lectures)
       .where(and(eq(lectures.note, tag), eq(lectures.payType, "수동기입")))
   )[0];
-  assert.equal(afterMerge.content, "로봇코딩");
+  assert.equal(afterMerge.content, "AI 투닝");
 
   // 정리
   for (const r of await db
@@ -1005,12 +1309,7 @@ async function main() {
   const left = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(lectures);
-  const seedLectures = (
-    JSON.parse(fs.readFileSync("data/tutorpay-seed.json", "utf8")) as {
-      lectures: unknown[];
-    }
-  ).lectures.length;
-  assert.equal(left[0].n, seedLectures, `시드 원본 ${seedLectures}건 유지`);
+  assert.equal(left[0].n, 558, "원본 558건 유지");
   console.log(
     "서버 액션 통합 테스트 통과 ✓ (배정·검증·정규화·스냅샷·잠금·일괄지급·단가표버전·지급유형/등급·교구·강의연동대여·삭제복원·병합)",
   );

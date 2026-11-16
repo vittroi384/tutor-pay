@@ -5,7 +5,7 @@
  * - updateLecture / deleteLecture / toggleLecture(완료·지급): 잠긴 달이면 거부(assertMonthUnlocked)
  * - markInstructorMonthPaid / markInstructorPeriodPaid: 강사별 미지급 일괄 지급 (기관지급 제외)
  * - setMonthLock: 월 정산 확정/해제
- * 검증 규칙(0.5차시 단위, 수동기입 단가 필수, 같은 강사 중복 금지 등)도 이 파일에 있다.
+ * 검증 규칙(0.5차시 단위, 수동기입 단가 필수 — 미배정·사내 직원 제외, 같은 강사 중복 금지 등)도 이 파일에 있다.
  */
 import { revalidatePath } from "next/cache";
 import { and, between, eq, gt, inArray, ne } from "drizzle-orm";
@@ -14,6 +14,7 @@ import {
   equipmentRentals,
   contentAliases,
   contents,
+  grades,
   institutions,
   instructors,
   lectures,
@@ -28,13 +29,20 @@ import {
   isManualPayType,
   regionFromInstitutionName,
   ROLES,
+  STAFF_GRADE_CODE,
   type PayTypeRule,
   TAX_TYPES,
+  TRAVEL_TYPES,
+  DEFAULT_TRAVEL_TYPE,
 } from "@/lib/calc";
 import { monthsBetween, ymRange } from "@/lib/format";
 import { getLockedMonths, getPayTypes, getRateTables } from "@/lib/queries";
 import { insertRentalsTx } from "@/lib/rentals";
-import { requireEditor } from "@/lib/session";
+import {
+  requireEditor,
+  type CurrentUser,
+  canOverrideLock,
+} from "@/lib/session";
 import { safeAction } from "@/lib/action-utils";
 import type { ActionResult } from "@/lib/types";
 
@@ -51,10 +59,12 @@ export type LectureCommonInput = {
   payType: string | null;
   isDone: boolean;
   isPaid: boolean;
-  /** 교통비(원) — 기본 0, 수기 입력. 세금 계산과 무관하게 지급액에 합산 */
+  /** 교통비(원) — 기본 0, 수기 입력. 강의와 같은 세금 구분으로 원천징수되어 지급액에 합산 */
   travelFee: number;
   /** 세금 구분 — 사업소득(3.3%)/기타소득(8.8%)/비과세(0%). 없으면 사업소득 */
   taxType?: string | null;
+  /** 교통비 구분 — 실비(비과세)/정액(3.3%). 교통비가 있으면 없을 때 정액으로 저장 */
+  travelType?: string | null;
   note: string | null;
   /** (선택) 이 강의와 함께 빌려준 교구 — 저장 시 교구 관리의 대여 기록으로 만들어지고 강의와 연결된다 */
   equipmentItems?: { equipmentId: number; quantity: number }[];
@@ -70,7 +80,9 @@ function revalidateAll() {
   revalidatePath("/", "layout");
 }
 
-async function assertMonthUnlocked(tx: Tx, dateStr: string) {
+async function assertMonthUnlocked(tx: Tx, dateStr: string, user: CurrentUser) {
+  // 정산 확정된 달은 관리자만 수정할 수 있다 (그 외 계정은 완료·지급 체크 포함 전부 거부)
+  if (canOverrideLock(user.role)) return;
   const { year, month } = ymRange(dateStr.slice(0, 7));
   const lock = await tx.query.settlementLocks.findFirst({
     where: and(
@@ -80,7 +92,7 @@ async function assertMonthUnlocked(tx: Tx, dateStr: string) {
   });
   if (lock)
     throw new Error(
-      `${year}년 ${month}월은 정산 확정(잠금) 상태입니다. 정산 화면에서 잠금을 해제한 뒤 수정하세요.`,
+      `${year}년 ${month}월은 정산 확정(잠금) 상태입니다. 확정된 달은 관리자만 수정할 수 있습니다.`,
     );
 }
 
@@ -120,21 +132,48 @@ function validateCommon(input: LectureCommonInput, rules: PayTypeRule[]) {
       throw new Error("시간은 HH:MM 형식이어야 합니다.");
   if (input.taxType != null && !TAX_TYPES.some((t) => t.code === input.taxType))
     throw new Error("세금 구분이 올바르지 않습니다.");
+  if (
+    input.travelType != null &&
+    !TRAVEL_TYPES.some((t) => t.code === input.travelType)
+  )
+    throw new Error("교통비 구분이 올바르지 않습니다.");
   if (!Number.isInteger(input.travelFee) || input.travelFee < 0)
     throw new Error("교통비는 0 이상의 정수(원)여야 합니다.");
+}
+
+/** 사내 직원(내부 인력 등급)인 강사 id 집합 — 수동기입 단가를 비워도 되는 대상 */
+async function staffInstructorIds(
+  ids: (number | null)[],
+): Promise<Set<number>> {
+  const real = ids.filter((v): v is number => v != null);
+  if (!real.length) return new Set();
+  const rows = await db
+    .select({ id: instructors.id })
+    .from(instructors)
+    .innerJoin(grades, eq(grades.id, instructors.gradeId))
+    .where(
+      and(inArray(instructors.id, real), eq(grades.code, STAFF_GRADE_CODE)),
+    );
+  return new Set(rows.map((r) => r.id));
 }
 
 function validateAssignment(
   a: AssignmentInput,
   payType: string | null,
   rules: PayTypeRule[],
+  staffIds: Set<number>,
 ) {
   // 강사 미선택 허용 — 미배정으로 등록되고 나중에 수정에서 지정
   if (!(ROLES as readonly string[]).includes(a.role))
     throw new Error("역할 값이 올바르지 않습니다.");
+  if (!isManualPayType(payType, rules)) return;
+  if (a.manualPrice != null && a.manualPrice < 0)
+    throw new Error(`${payType} 단가는 0 이상이어야 합니다.`);
+  // 단가 필수 대상: 강사가 배정돼 있고 사내 직원이 아닐 때 (미배정·사내 직원은 비워도 됨 → 0원)
   if (
-    isManualPayType(payType, rules) &&
-    (a.manualPrice == null || a.manualPrice < 0)
+    a.manualPrice == null &&
+    a.instructorId != null &&
+    !staffIds.has(a.instructorId)
   )
     throw new Error(`${payType} 지급유형은 강사별 단가를 입력해야 합니다.`);
 }
@@ -278,12 +317,15 @@ export async function createLectures(
       .filter((v) => v != null);
     if (new Set(ids).size !== ids.length)
       throw new Error("같은 강사를 두 번 배정할 수 없습니다.");
+    const staffIds = await staffInstructorIds(
+      input.assignments.map((a) => a.instructorId),
+    );
     input.assignments.forEach((a) =>
-      validateAssignment(a, input.payType, rules),
+      validateAssignment(a, input.payType, rules, staffIds),
     );
 
     const count = await db.transaction(async (tx) => {
-      await assertMonthUnlocked(tx, input.date);
+      await assertMonthUnlocked(tx, input.date, user);
       const institutionId = await resolveInstitution(tx, input, user.email);
       const content = await normalizeContent(tx, input.content);
       let n = 0;
@@ -325,9 +367,15 @@ export async function createLectures(
               ? a.manualPrice
               : null,
             unitPrice: snap.unitPrice,
+            unitPriceAfter: snap.unitPriceAfter,
+            tierLimit: snap.tierLimit,
             grossAmount: snap.grossAmount,
             netAmount: snap.netAmount,
             travelFee: input.travelFee,
+            travelType:
+              input.travelFee > 0
+                ? (input.travelType ?? DEFAULT_TRAVEL_TYPE)
+                : null,
             taxType: input.taxType ?? "사업소득",
             isPaid: input.isPaid,
             paidAt: input.isPaid ? new Date() : null,
@@ -381,14 +429,19 @@ export async function updateLecture(
     const user = await requireEditor();
     const rules = await loadRules();
     validateCommon(input, rules);
-    validateAssignment(input, input.payType, rules);
+    validateAssignment(
+      input,
+      input.payType,
+      rules,
+      await staffInstructorIds([input.instructorId]),
+    );
     await db.transaction(async (tx) => {
       const before = await tx.query.lectures.findFirst({
         where: eq(lectures.id, id),
       });
       if (!before) throw new Error("강의를 찾을 수 없습니다.");
-      await assertMonthUnlocked(tx, before.date);
-      await assertMonthUnlocked(tx, input.date);
+      await assertMonthUnlocked(tx, before.date, user);
+      await assertMonthUnlocked(tx, input.date, user);
       const institutionId = await resolveInstitution(tx, input, user.email);
       const content = await normalizeContent(tx, input.content);
       const snap = await computeSnapshot(
@@ -426,9 +479,15 @@ export async function updateLecture(
             ? input.manualPrice
             : null,
           unitPrice: snap.unitPrice,
+          unitPriceAfter: snap.unitPriceAfter,
+          tierLimit: snap.tierLimit,
           grossAmount: snap.grossAmount,
           netAmount: snap.netAmount,
           travelFee: input.travelFee,
+          travelType:
+            input.travelFee > 0
+              ? (input.travelType ?? DEFAULT_TRAVEL_TYPE)
+              : null,
           taxType: input.taxType ?? "사업소득",
           isPaid: input.isPaid,
           paidAt: input.isPaid ? (before.paidAt ?? new Date()) : null,
@@ -482,7 +541,7 @@ export async function deleteLecture(
         where: eq(lectures.id, id),
       });
       if (!before) throw new Error("이미 삭제된 강의입니다.");
-      await assertMonthUnlocked(tx, before.date);
+      await assertMonthUnlocked(tx, before.date, user);
       // 이 강의에 연동된 교구 대여도 함께 삭제 — 교구 관리에서 따로 지울 필요 없게
       const linked = await tx
         .select()
@@ -525,7 +584,7 @@ export async function deleteLecture(
   });
 }
 
-/** 목록에서 완료/지급 체크박스 즉시 저장. 지급 변경은 잠긴 달이면 거부, 지급 시각(paidAt)도 기록 */
+/** 목록에서 완료/지급 체크박스 즉시 저장. 정산 확정된 달이면 거부(관리자 제외), 지급 시각(paidAt)도 기록 */
 export async function toggleLecture(
   id: number,
   field: "isDone" | "isPaid",
@@ -538,7 +597,7 @@ export async function toggleLecture(
         where: eq(lectures.id, id),
       });
       if (!before) throw new Error("강의를 찾을 수 없습니다.");
-      if (field === "isPaid") await assertMonthUnlocked(tx, before.date);
+      await assertMonthUnlocked(tx, before.date, user);
       const patch =
         field === "isDone"
           ? { isDone: value }
@@ -587,9 +646,9 @@ export async function markInstructorPeriodPaid(
       throw new Error("기간이 올바르지 않습니다.");
     const lockedAll = await getLockedMonths();
     const lockedIn = monthsBetween(from, to).filter((m) => lockedAll.has(m));
-    if (lockedIn.length)
+    if (lockedIn.length && !canOverrideLock(user.role))
       throw new Error(
-        `정산 확정(잠금)된 달이 포함되어 있습니다: ${lockedIn.join(", ")} — 잠금을 해제하거나 기간을 조정하세요.`,
+        `정산 확정(잠금)된 달이 포함되어 있습니다: ${lockedIn.join(", ")} — 확정된 달은 관리자만 변경할 수 있습니다.`,
       );
     const ym =
       from.slice(0, 7) === to.slice(0, 7) ? from.slice(0, 7) : `${from}~${to}`;
@@ -631,13 +690,166 @@ export async function markInstructorPeriodPaid(
   });
 }
 
-/** 월 정산 확정(잠금) / 해제 */
+/**
+ * 여러 강의의 완료/지급을 한 번에 변경 — 강의 목록에서 날짜 묶음 전체 체크/해제.
+ * 지급 '체크'는 지급 대상(기관지급·세후 0원 제외)만 처리하고 나머지는 건너뛴다.
+ */
+export async function bulkToggleLectures(
+  ids: number[],
+  field: "isDone" | "isPaid",
+  value: boolean,
+): Promise<ActionResult<{ count: number; skipped: number }>> {
+  return safeAction(async () => {
+    const user = await requireEditor();
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      ids.length > 500 ||
+      ids.some((i) => !Number.isInteger(i))
+    )
+      throw new Error("대상 강의가 올바르지 않습니다.");
+    if (field !== "isDone" && field !== "isPaid")
+      throw new Error("변경 항목이 올바르지 않습니다.");
+    const result = await db.transaction(async (tx) => {
+      const rows = await tx
+        .select({
+          id: lectures.id,
+          date: lectures.date,
+          isDone: lectures.isDone,
+          isPaid: lectures.isPaid,
+          payType: lectures.payType,
+          netAmount: lectures.netAmount,
+        })
+        .from(lectures)
+        .where(inArray(lectures.id, ids));
+      for (const d of new Set(rows.map((r) => r.date.slice(0, 7))))
+        await assertMonthUnlocked(tx, `${d}-01`, user);
+      const changing = rows.filter((r) => r[field] !== value);
+      const targets =
+        field === "isPaid" && value
+          ? changing.filter(
+              (r) => r.payType !== INSTITUTION_PAID && r.netAmount > 0,
+            )
+          : changing;
+      if (targets.length) {
+        const targetIds = targets.map((r) => r.id);
+        await tx
+          .update(lectures)
+          .set({
+            ...(field === "isDone"
+              ? { isDone: value }
+              : { isPaid: value, paidAt: value ? new Date() : null }),
+            updatedBy: user.email,
+            updatedAt: new Date(),
+          })
+          .where(inArray(lectures.id, targetIds));
+        const dates = [...new Set(targets.map((r) => r.date))].sort();
+        await logAudit(tx, {
+          userEmail: user.email,
+          tableName: "lectures",
+          action: "bulk-toggle",
+          after: { ids: targetIds, field, value },
+          summary: `${dates[0]}${dates.length > 1 ? ` 외 ${dates.length - 1}일` : ""} 강의 ${targetIds.length}건 ${field === "isDone" ? "완료" : "지급"} ${value ? "일괄 체크" : "일괄 해제"}`,
+        });
+      }
+      return {
+        count: targets.length,
+        skipped: changing.length - targets.length,
+      };
+    });
+    revalidateAll();
+    return result;
+  });
+}
+
+/**
+ * 정산 화면: 선택한 강사들의 기간 내 강의를 한 번에 처리.
+ * - isDone: 아직 완료 체크가 안 된 강의를 전부 완료로
+ * - isPaid: 미지급 건(기관지급·세후 0원 제외)을 전부 지급완료로
+ */
+export async function bulkMarkInstructors(
+  instructorIds: number[],
+  from: string,
+  to: string,
+  field: "isDone" | "isPaid",
+): Promise<ActionResult<{ count: number }>> {
+  return safeAction(async () => {
+    const user = await requireEditor();
+    if (
+      !Array.isArray(instructorIds) ||
+      instructorIds.length === 0 ||
+      instructorIds.some((i) => !Number.isInteger(i))
+    )
+      throw new Error("강사를 한 명 이상 선택하세요.");
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(from) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(to) ||
+      from > to
+    )
+      throw new Error("기간이 올바르지 않습니다.");
+    if (field !== "isDone" && field !== "isPaid")
+      throw new Error("변경 항목이 올바르지 않습니다.");
+    const lockedAll = await getLockedMonths();
+    const lockedIn = monthsBetween(from, to).filter((m) => lockedAll.has(m));
+    if (lockedIn.length && !canOverrideLock(user.role))
+      throw new Error(
+        `정산 확정(잠금)된 달이 포함되어 있습니다: ${lockedIn.join(", ")} — 확정된 달은 관리자만 변경할 수 있습니다.`,
+      );
+    const ym =
+      from.slice(0, 7) === to.slice(0, 7) ? from.slice(0, 7) : `${from}~${to}`;
+    const count = await db.transaction(async (tx) => {
+      const rows = await tx
+        .select({ id: lectures.id })
+        .from(lectures)
+        .where(
+          and(
+            inArray(lectures.instructorId, instructorIds),
+            between(lectures.date, from, to),
+            ...(field === "isDone"
+              ? [eq(lectures.isDone, false)]
+              : [
+                  eq(lectures.isPaid, false),
+                  ne(lectures.payType, INSTITUTION_PAID),
+                  gt(lectures.netAmount, 0),
+                ]),
+          ),
+        );
+      if (!rows.length) return 0;
+      const ids = rows.map((r) => r.id);
+      await tx
+        .update(lectures)
+        .set({
+          ...(field === "isDone"
+            ? { isDone: true }
+            : { isPaid: true, paidAt: new Date() }),
+          updatedBy: user.email,
+          updatedAt: new Date(),
+        })
+        .where(inArray(lectures.id, ids));
+      await logAudit(tx, {
+        userEmail: user.email,
+        tableName: "lectures",
+        action: field === "isDone" ? "bulk-done" : "bulk-paid",
+        after: { ids, instructorIds },
+        summary: `${ym} 강사 ${instructorIds.length}명 ${ids.length}건 ${field === "isDone" ? "완료 처리" : "지급완료"}`,
+      });
+      return ids.length;
+    });
+    revalidateAll();
+    return { count };
+  });
+}
+
+/** 월 정산 확정(잠금) / 해제 — 확정은 편집 권한, 해제는 관리자만 */
 export async function setMonthLock(
   ym: string,
   locked: boolean,
 ): Promise<ActionResult> {
   return safeAction(async () => {
     const user = await requireEditor();
+    // 확정은 편집 권한이면 누구나, 해제는 관리자만 — 확정 후에는 다른 계정이 풀고 고칠 수 없게
+    if (!locked && !canOverrideLock(user.role))
+      throw new Error("정산 확정 해제는 관리자만 할 수 있습니다.");
     const { year, month } = ymRange(ym);
     if (locked) {
       await db

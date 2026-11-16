@@ -14,7 +14,7 @@ import {
   getLockedMonths,
   getMasterData,
 } from "@/lib/queries";
-import { isEditor, requireUser } from "@/lib/session";
+import { isEditor, requireUser, canOverrideLock } from "@/lib/session";
 import { LecturesView } from "./LecturesView";
 
 type SP = {
@@ -68,6 +68,7 @@ export default async function LecturesPage({
         master={master}
         lockedMonths={lockedMonths}
         canEdit={isEditor(user.role)}
+        lockBypass={canOverrideLock(user.role)}
         initial={{
           instructorId: num(sp.instructor),
           institutionId: num(sp.institution),

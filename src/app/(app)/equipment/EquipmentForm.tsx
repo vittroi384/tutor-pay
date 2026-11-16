@@ -11,6 +11,7 @@
 "use client";
 
 import { useState } from "react";
+import { useNumericInputMode } from "@/components/ui/useNumericInputMode";
 import { Drawer } from "@/components/ui/Drawer";
 import { useToast } from "@/components/ui/Toast";
 import type { EquipmentRow } from "@/lib/types";
@@ -25,6 +26,7 @@ export function EquipmentForm({
   categories: string[];
   onClose: () => void;
 }) {
+  const numericMode = useNumericInputMode("numeric");
   const { toast } = useToast();
   const [name, setName] = useState(eq?.name ?? "");
   const [code, setCode] = useState(eq?.code ?? "");
@@ -119,31 +121,35 @@ export function EquipmentForm({
           <div>
             <label className="label">총 보유 *</label>
             <input
-              type="number"
-              min="0"
+              type="text"
+              inputMode={numericMode}
               className="input text-right"
               value={totalStock}
-              onChange={(e) => setTotalStock(e.target.value)}
+              onChange={(e) => setTotalStock(e.target.value.replace(/\D/g, ""))}
             />
           </div>
           <div>
             <label className="label">수리중</label>
             <input
-              type="number"
-              min="0"
+              type="text"
+              inputMode={numericMode}
               className="input text-right"
               value={repairCount}
-              onChange={(e) => setRepairCount(e.target.value)}
+              onChange={(e) =>
+                setRepairCount(e.target.value.replace(/\D/g, ""))
+              }
             />
           </div>
           <div>
             <label className="label">폐기</label>
             <input
-              type="number"
-              min="0"
+              type="text"
+              inputMode={numericMode}
               className="input text-right"
               value={discardCount}
-              onChange={(e) => setDiscardCount(e.target.value)}
+              onChange={(e) =>
+                setDiscardCount(e.target.value.replace(/\D/g, ""))
+              }
             />
           </div>
         </div>

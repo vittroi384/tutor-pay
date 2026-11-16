@@ -7,6 +7,7 @@
  * 기존 강의는 스냅샷이라 새 버전·새 유형의 영향을 받지 않는다.
  */
 import { useMemo, useState, useTransition } from "react";
+import { useNumericInputMode } from "@/components/ui/useNumericInputMode";
 import { ArrowDown, ArrowUp, Pencil, Plus } from "lucide-react";
 import { Drawer } from "@/components/ui/Drawer";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
@@ -315,6 +316,7 @@ function NewVersionForm({
   const { toast } = useToast();
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [memo, setMemo] = useState("");
+  const numericMode = useNumericInputMode("numeric");
   const [values, setValues] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {};
     for (const g of grades)
@@ -447,7 +449,7 @@ function NewVersionForm({
               {columns.map((c) => (
                 <td key={c.key} className="!p-1">
                   <input
-                    inputMode="numeric"
+                    inputMode={numericMode}
                     placeholder="미사용"
                     className="input w-24 !px-1.5 !py-1 text-right placeholder:text-slate-300"
                     value={gd[c.key] ?? ""}
@@ -466,7 +468,7 @@ function NewVersionForm({
                   return (
                     <td key={c.key} className="!p-1">
                       <input
-                        inputMode="numeric"
+                        inputMode={numericMode}
                         className={`input w-24 !px-1.5 !py-1 text-right ${changed ? "border-amber-400 bg-amber-50" : ""}`}
                         value={values[key] ?? "0"}
                         onChange={(e) =>
@@ -475,7 +477,7 @@ function NewVersionForm({
                         title="기본 단가 (1~2차시)"
                       />
                       <input
-                        inputMode="numeric"
+                        inputMode={numericMode}
                         placeholder="3차시~"
                         className="input mt-0.5 w-24 !px-1.5 !py-1 text-right text-[12px] placeholder:text-slate-300"
                         value={after[key] ?? ""}
@@ -576,12 +578,12 @@ function PayTypesPanel({
                   </span>
                 )}
               </td>
-              <td className="text-[12px]">
+              <td className="text-[12px] whitespace-nowrap">
                 {p.manual
-                  ? "강의 등록 시 직접 입력"
+                  ? "직접 입력"
                   : p.roleBased
-                    ? "주강사/보조강사 열 2개"
-                    : "역할 무관 열 1개"}
+                    ? "주·보조 2열"
+                    : "역할 무관 1열"}
               </td>
               <td className="num">{usage[p.code] ?? 0}</td>
               <td>{p.isActive ? "사용" : "중지"}</td>
