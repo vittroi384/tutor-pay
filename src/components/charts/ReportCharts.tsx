@@ -226,7 +226,7 @@ export function DonutChart({
   return (
     <div className="flex flex-col items-center gap-2 sm:flex-row">
       <div
-        className={`w-full ${compact ? "sm:w-[46%] sm:min-w-[150px]" : "sm:w-1/2 sm:min-w-[200px]"} shrink-0`}
+        className={`w-full ${compact ? "sm:w-[38%] sm:min-w-[110px]" : "sm:w-1/2 sm:min-w-[200px]"} shrink-0`}
         style={{ height }}
       >
         <ResponsiveContainer width="100%" height="100%">
@@ -257,7 +257,9 @@ export function DonutChart({
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <ul className="w-full min-w-0 flex-1 space-y-1 text-[12px]">
+      <ul
+        className={`w-full min-w-0 flex-1 space-y-1 ${compact ? "text-[11.5px]" : "text-[12px]"}`}
+      >
         {data.map((r, i) => (
           <li key={r.key} className="flex items-center gap-2">
             <span

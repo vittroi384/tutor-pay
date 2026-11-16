@@ -12,8 +12,8 @@ import {
   getLockedMonths,
   getPayTypes,
 } from "@/lib/queries";
-import { isEditor, requireUser } from "@/lib/session";
-import { isPayable, isUnpaid, lectureWarnings } from "@/lib/calc";
+import { isEditor, requireUser, canOverrideLock } from "@/lib/session";
+import { isPayable, isUnpaid, lectureWarnings, travelNetOf } from "@/lib/calc";
 import { SettlementView, type SettlementRowT } from "./SettlementView";
 
 export default async function SettlementPage({
@@ -57,6 +57,7 @@ export default async function SettlementPage({
       gross: 0,
       net: 0,
       travel: 0,
+      travelNet: 0,
       unpaidCount: 0,
       unpaidNet: 0,
       warn: 0,
@@ -70,6 +71,7 @@ export default async function SettlementPage({
     r.gross += l.grossAmount;
     r.net += l.netAmount;
     r.travel += l.travelFee;
+    r.travelNet += travelNetOf(l.travelFee, l.taxType, l.date, l.travelType);
     if (isPayable(l)) r.payableCount++; // TutorPay이 지급하는 건수 (기관지급·0원 제외)
     if (isUnpaid(l)) {
       r.unpaidCount++;
@@ -90,6 +92,7 @@ export default async function SettlementPage({
         rows={rows}
         lockedMonths={lockedMonths}
         canEdit={isEditor(user.role)}
+        canUnlock={canOverrideLock(user.role)}
       />
     </>
   );

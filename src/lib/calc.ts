@@ -36,6 +36,15 @@ export const DEFAULT_PAY_TYPE_RULES: PayTypeRule[] = [
 export const PAY_TYPES = DEFAULT_PAY_TYPE_RULES.map((r) => r.code);
 export const ROLES = ["주강사", "보조강사"] as const;
 export const GRADE_CODES = ["S등급", "A등급", "B등급", "연구원"] as const;
+/**
+ * 사내 직원(내부 인력) 등급. 강사료를 따로 지급하지 않으므로
+ * 수동기입 강의에서도 단가를 비워둘 수 있고 '단가가 비어 있음' 경고도 내지 않는다.
+ * (등급 이름으로 판별 — 단가표 화면에서 이 등급의 이름을 바꾸면 이 예외가 적용되지 않는다)
+ */
+export const STAFF_GRADE_CODE = "연구원";
+export function isStaffGrade(gradeCode: string | null | undefined): boolean {
+  return gradeCode === STAFF_GRADE_CODE;
+}
 export const INSTITUTION_TYPES = [
   "초등",
   "중등",
@@ -225,6 +234,52 @@ export function taxRateLabel(t: string | null | undefined): string {
   return TAX_TYPES.find((x) => x.code === t)?.label ?? "사업소득 3.3%";
 }
 
+/** 교통비 원천징수 적용 시작일 — 이 날짜 이후 강의부터 교통비도 세금 구분과 같은 세율로 공제. 그 전 강의는 전액 지급(기존 계산 유지) */
+export const TRAVEL_TAX_FROM = "2026-10-01";
+export function isTravelTaxed(date?: string | null): boolean {
+  return !date || date >= TRAVEL_TAX_FROM;
+}
+
+/** 교통비 구분 — 실비지급은 비과세(전액), 정액지급은 3.3% 원천징수 */
+export const TRAVEL_TYPES = [
+  { code: "실비", label: "실비지급", note: "비과세" },
+  { code: "정액", label: "정액지급", note: "3.3%" },
+] as const;
+export const DEFAULT_TRAVEL_TYPE = "정액";
+
+/**
+ * 교통비 세후. 지급액 = 세후 + 교통비 세후.
+ * - 실비지급: 비과세 → 전액 / 정액지급: 3.3% 원천징수
+ * - 구분이 없는 이전 기록: 기존 규칙 그대로(2026-10-01 이전 강의는 전액, 이후는 강의 세금 구분 세율)
+ */
+export function travelNetOf(
+  travelFee: number,
+  taxType?: string | null,
+  date?: string | null,
+  travelType?: string | null,
+): number {
+  const fee = travelFee || 0;
+  if (travelType === "실비") return fee;
+  if (travelType === "정액") return netOf(fee, "사업소득");
+  if (!isTravelTaxed(date)) return fee;
+  return netOf(fee, taxType);
+}
+
+/** 목록·명세서의 교통비 아래 작은 표시 문구 (없으면 null) */
+export function travelNote(
+  travelFee: number,
+  taxType?: string | null,
+  date?: string | null,
+  travelType?: string | null,
+): string | null {
+  if (!travelFee) return null;
+  if (travelType === "실비") return "실비 · 비과세";
+  const net = travelNetOf(travelFee, taxType, date, travelType);
+  if (travelType === "정액")
+    return `정액 · 세후 ${net.toLocaleString("ko-KR")}`;
+  return net !== travelFee ? `세후 ${net.toLocaleString("ko-KR")}` : null;
+}
+
 /** 세후 = floor(세전 × (1000−세율)/1000) — 건별 원 단위 절사, 정수 연산으로 오차 방지 */
 export function netOf(gross: number, taxType?: string | null): number {
   const per =
@@ -270,8 +325,15 @@ export function calcAmounts(
   }
   const grossAmount = grossOfItem(input.sessions, item, unitPrice);
   const netAmount = netOf(grossAmount, input.taxType);
+  // 구간형 칸이면 "3차시부터 단가"를 함께 돌려줘 스냅샷·명세서에 남긴다 (기본과 같으면 일괄로 취급)
+  const tiered =
+    item != null &&
+    item.amountAfter != null &&
+    item.amountAfter !== item.amount;
   return {
     unitPrice,
+    unitPriceAfter: tiered ? item!.amountAfter! : null,
+    tierLimit: tiered ? (item!.tierLimit ?? 2) : null,
     grossAmount,
     netAmount,
     withholding: grossAmount - netAmount,
@@ -342,7 +404,12 @@ export function lectureWarnings(
   const manual = isManualPayType(l.payType, rules);
   if (!l.payType) w.push("지급유형이 비어 있어 단가 0으로 계산됨");
   if (l.sessions == null) w.push("차시가 비어 있음");
-  if (manual && (l.manualPrice == null || l.unitPrice === 0))
+  // 사내 직원은 강사료가 없어 단가가 비어 있는 게 정상 — 경고하지 않는다
+  if (
+    manual &&
+    !isStaffGrade(l.gradeCode) &&
+    (l.manualPrice == null || l.unitPrice === 0)
+  )
     w.push(`${l.payType} 단가가 비어 있음`);
   if (
     l.payType &&

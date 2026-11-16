@@ -4,7 +4,7 @@
   --font-sans:
     "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", system-ui, sans-serif;
-  /* 브랜드 색 — 로고의 주황(#F5A800)을 기준으로 만든 단계. bg-brand-500 / text-brand-700 / ring-brand-500 처럼 사용 */
+  /* 브랜드 색 — TutorPay 로고의 주황(#F5A800)을 기준으로 만든 단계. bg-brand-500 / text-brand-700 / ring-brand-500 처럼 사용 */
   --color-brand-50: #fff8e5;
   --color-brand-100: #ffeec2;
   --color-brand-200: #ffdf8a;
@@ -24,6 +24,9 @@ body {
 
 body {
   @apply bg-slate-50 text-slate-800 text-[14px] antialiased;
+  /* 한글은 단어 중간에서 줄바꿈하지 않음("계/산돼요" 방지). 칸보다 긴 한 단어만 예외적으로 끊음 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 공용 컴포넌트 클래스 — @layer components 안에 두어야 Tailwind 유틸리티(w-44, !px-1 등)가 이 기본값을 덮어쓸 수 있음 */
@@ -139,6 +142,28 @@ body {
   /* 가로 스크롤 래퍼와 최소 폭 해제 → 표가 페이지 폭에 맞춰 줄어든다 */
   .print-root .overflow-x-auto {
     overflow: visible !important;
+  }
+  /* 인쇄 시 잘림 방지: 표 한 줄·합계·서명란이 페이지 사이에서 나뉘지 않게, 표가 넘어가면 머리글 반복 */
+  .print-root tr,
+  .print-root .stmt-summary,
+  .print-root .stmt-sign,
+  .print-root .stmt-bottom {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-root thead {
+    display: table-header-group;
+  }
+  /* 합계 상자: 인쇄에서는 폭을 넓혀 "지급 합계" 줄이 두 줄로 꺾이지 않게 */
+  .print-root .stmt-summary {
+    width: 96mm !important;
+  }
+  .print-root .stmt-summary span {
+    white-space: nowrap;
+  }
+  /* 합계 상자: 인쇄 폭에서 라벨이 두 줄로 접히지 않게 */
+  .print-root .stmt-summary {
+    width: 92mm !important;
   }
   .print-root table {
     min-width: 0 !important;

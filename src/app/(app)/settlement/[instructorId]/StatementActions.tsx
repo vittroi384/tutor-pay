@@ -1,10 +1,10 @@
 "use client";
 /**
- * 명세서 상단 버튼 — 미지급 일괄 지급완료(잠긴 달 포함 시 불가), 인쇄/PDF, 강의배정에서 보기.
+ * 명세서 상단 버튼 — 왼쪽: 정산 목록·강사 상세·인쇄/PDF·강의배정 / 오른쪽 끝: 미지급 일괄 지급완료(확정된 달 포함 시 관리자만).
  */
 import Link from "next/link";
 import { useTransition } from "react";
-import { CheckCheck, ExternalLink, Printer } from "lucide-react";
+import { ArrowLeft, CheckCheck, ExternalLink, Printer } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { markInstructorPeriodPaid } from "../../lectures/actions";
 
@@ -31,22 +31,14 @@ export function StatementActions({
   const [pending, start] = useTransition();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {canEdit && (
-        <button
-          className="btn-primary"
-          disabled={unpaidCount === 0 || pending || locked}
-          onClick={() =>
-            start(async () => {
-              const r = await markInstructorPeriodPaid(instructorId, from, to);
-              if (r.ok)
-                toast(`${r.data?.count ?? 0}건을 지급완료로 처리했어요`);
-              else toast(r.error, "error");
-            })
-          }
-        >
-          <CheckCheck size={15} /> 미지급 {unpaidCount}건 지급완료 처리
-        </button>
-      )}
+      {/* 이동 버튼은 왼쪽, 지급완료 처리는 오른쪽 끝 — 뒤로 가려다 지급 버튼을 잘못 누르지 않게 서로 멀리 둔다 */}
+      <Link className="btn-secondary" href={`/settlement?${query}`}>
+        <ArrowLeft size={15} /> 정산 목록으로
+      </Link>
+      <Link className="btn-secondary" href={`/instructors/${instructorId}`}>
+        강사 상세
+      </Link>
+      <span className="mx-0.5 hidden h-5 w-px bg-slate-200 sm:block" />
       <button
         className="btn-secondary"
         onClick={() => window.print()}
@@ -60,9 +52,31 @@ export function StatementActions({
       >
         <ExternalLink size={15} /> 강의배정에서 보기
       </Link>
-      {locked && (
-        <span className="text-[12px] text-amber-700">{lockedLabel}</span>
-      )}
+      <div className="ml-auto flex items-center gap-2">
+        {locked && (
+          <span className="text-[12px] text-amber-700">{lockedLabel}</span>
+        )}
+        {canEdit && (
+          <button
+            className="btn-primary"
+            disabled={unpaidCount === 0 || pending || locked}
+            onClick={() =>
+              start(async () => {
+                const r = await markInstructorPeriodPaid(
+                  instructorId,
+                  from,
+                  to,
+                );
+                if (r.ok)
+                  toast(`${r.data?.count ?? 0}건을 지급완료로 처리했어요`);
+                else toast(r.error, "error");
+              })
+            }
+          >
+            <CheckCheck size={15} /> 미지급 {unpaidCount}건 지급완료 처리
+          </button>
+        )}
+      </div>
     </div>
   );
 }

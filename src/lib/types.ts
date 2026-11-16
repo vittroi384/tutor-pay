@@ -112,6 +112,9 @@ export type LectureRow = {
   netAmount: number;
   travelFee: number; // 교통비(원) — 세후와 별도, 지급액 = 세후 + 교통비
   taxType: string; // 세금 구분 — 사업소득(3.3%)/기타소득(8.8%)/비과세(0%)
+  unitPriceAfter: number | null; // 3차시부터 단가(구간형일 때만)
+  travelType: string | null; // 교통비 구분 — 실비/정액, null = 이전 기록
+  tierLimit: number | null; // 구간 경계 차시
   isPaid: boolean;
   isDone: boolean;
   headcount: number | null;

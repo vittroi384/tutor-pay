@@ -1,3 +1,4 @@
+import type React from "react";
 /**
  * 화면 상단 요약 숫자 카드 줄 (건수·차시·세전·세후·미지급 …).
  * 카드 개수에 맞춰 자동 배치(auto-fit) — 권한에 따라 일부 카드를 숨겨도 남은 카드가 폭을 고르게 채운다.
@@ -21,11 +22,24 @@ export function SummaryStrip({ items }: { items: SummaryItem[] }) {
     rose: "text-rose-700",
   };
   return (
-    <div className="no-print mb-3 grid grid-cols-2 gap-2 sm:mb-4 md:[grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+    <div
+      className="no-print mb-3 grid grid-cols-2 gap-2 sm:mb-4 md:[grid-template-columns:repeat(var(--half),minmax(0,1fr))] xl:[grid-template-columns:repeat(var(--n),minmax(0,1fr))]"
+      style={
+        {
+          "--n": items.length,
+          "--half": Math.ceil(items.length / 2),
+        } as React.CSSProperties
+      }
+    >
       {items.map((it) => {
         const inner = (
           <>
-            <div className="text-[11px] text-slate-500">{it.label}</div>
+            <div
+              className="truncate text-[11px] text-slate-500"
+              title={it.label}
+            >
+              {it.label}
+            </div>
             <div
               className={`text-[15px] font-semibold tabular-nums sm:text-[16px] ${tone[it.tone ?? "default"]}`}
             >

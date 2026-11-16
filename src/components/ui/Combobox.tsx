@@ -92,7 +92,15 @@ export function Combobox({
           setHi(0);
           if (allowCustom) onChange(e.target.value);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={(e) => {
+          // 화면이 커서만 옮겨준 경우(강사 추가 직후 등)는 목록을 펼치지 않음 — 입력하거나 클릭하면 펼쳐짐
+          if (e.currentTarget.dataset.skipOpen) {
+            delete e.currentTarget.dataset.skipOpen;
+            return;
+          }
+          setOpen(true);
+        }}
+        onClick={() => setOpen(true)}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
             e.preventDefault();

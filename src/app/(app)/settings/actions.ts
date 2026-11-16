@@ -19,7 +19,7 @@ import {
 } from "@/db/schema";
 import { logAudit } from "@/lib/audit";
 import { safeAction } from "@/lib/action-utils";
-import { requireAdmin, requireEditor } from "@/lib/session";
+import { requireAdmin, requireEditor, canOverrideLock } from "@/lib/session";
 import { allowedEmails } from "@/auth.config";
 import type { ActionResult } from "@/lib/types";
 
@@ -178,9 +178,9 @@ export async function restoreDeleted(
       const locked = await db.query.settlementLocks.findFirst({
         where: (t, { and: a, eq: e }) => a(e(t.year, y), e(t.month, m)),
       });
-      if (locked)
+      if (locked && !canOverrideLock(user.role))
         throw new Error(
-          `${y}년 ${m}월은 정산 확정(잠금) 상태라 복원할 수 없습니다. 잠금을 해제한 뒤 다시 시도하세요.`,
+          `${y}년 ${m}월은 정산 확정(잠금) 상태라 복원할 수 없습니다. 확정된 달은 관리자만 변경할 수 있습니다.`,
         );
       if (
         !(await db.query.instructors.findFirst({

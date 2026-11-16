@@ -185,6 +185,8 @@ describe("calcAmounts — 단가·세전·세후 한 번에", () => {
     });
     assert.deepEqual(r, {
       unitPrice: 50000,
+      unitPriceAfter: 30000,
+      tierLimit: 2,
       grossAmount: 130000,
       netAmount: 125710,
       withholding: 4290,
@@ -210,7 +212,7 @@ describe("calcAmounts — 단가·세전·세후 한 번에", () => {
       manualPrice: null,
       sessions: 2,
     });
-    assert.deepEqual(r, { unitPrice: 0, grossAmount: 0, netAmount: 0, withholding: 0 });
+    assert.deepEqual(r, { unitPrice: 0, unitPriceAfter: null, tierLimit: null, grossAmount: 0, netAmount: 0, withholding: 0 });
   });
   it("수동기입은 입력 단가 × 차시, 세금 구분 반영", () => {
     const r = calcAmounts(items, {

@@ -114,7 +114,7 @@ export default async function DashboardPage({
             sub: `${fmtSessions(m.sessions)}차시`,
           },
           {
-            label: "이번 달 지급 예정(세후)",
+            label: "이번 달 지급(세후)",
             value: fmtWon(m.net),
             tone: "brand",
           },
@@ -245,7 +245,7 @@ export default async function DashboardPage({
                 <li key={l.id} className="flex items-center gap-2 px-4 py-1.5">
                   <Link
                     href={`/lectures?ym=${l.date.slice(0, 7)}&date=${l.date}`}
-                    className="w-20 shrink-0 text-slate-500 hover:underline"
+                    className="w-[5.75rem] shrink-0 whitespace-nowrap text-slate-500 hover:underline"
                     title="그날 강의 보기"
                   >
                     {fmtDateKo(l.date)}
@@ -325,7 +325,7 @@ export default async function DashboardPage({
               )}
               {logs.map((g) => (
                 <li key={g.id} className="flex items-start gap-2 px-4 py-1.5">
-                  <span className="w-20 shrink-0 text-slate-400">
+                  <span className="w-[5.75rem] shrink-0 whitespace-nowrap text-slate-400 tabular-nums">
                     {fmtDateTime(g.at)}
                   </span>
                   <span className="truncate">

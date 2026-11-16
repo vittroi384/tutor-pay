@@ -10,6 +10,7 @@
 "use client";
 
 import { useState } from "react";
+import { useNumericInputMode } from "@/components/ui/useNumericInputMode";
 import { Package } from "lucide-react";
 import { Combobox } from "@/components/ui/Combobox";
 import { Drawer } from "@/components/ui/Drawer";
@@ -31,6 +32,7 @@ export function RentalForm({
   today: string;
   onClose: () => void;
 }) {
+  const numericMode = useNumericInputMode("numeric");
   const { toast } = useToast();
   const [renter, setRenter] = useState("");
   const [purpose, setPurpose] = useState("교육(수업)");
@@ -159,14 +161,19 @@ export function RentalForm({
                   />
                 </div>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode={numericMode}
                   className="input w-20 text-right"
                   value={it.quantity}
                   onChange={(e) =>
                     setItems(
                       items.map((x, j) =>
-                        j === i ? { ...x, quantity: e.target.value } : x,
+                        j === i
+                          ? {
+                              ...x,
+                              quantity: e.target.value.replace(/\D/g, ""),
+                            }
+                          : x,
                       ),
                     )
                   }
@@ -224,6 +231,7 @@ export function RentalEditForm({
   renterOptions: string[];
   onClose: () => void;
 }) {
+  const numericMode = useNumericInputMode("numeric");
   const { toast } = useToast();
   const [renter, setRenter] = useState(rental.renter);
   const [purpose, setPurpose] = useState(rental.purpose ?? "");
@@ -322,11 +330,11 @@ export function RentalEditForm({
           <div>
             <label className="label">수량 *</label>
             <input
-              type="number"
-              min="1"
+              type="text"
+              inputMode={numericMode}
               className="input text-right"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
+              onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ""))}
             />
           </div>
         </div>

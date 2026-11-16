@@ -36,6 +36,7 @@ import {
   isPayable,
   isUnpaid,
   lectureWarnings,
+  travelNote,
 } from "@/lib/calc";
 import {
   fmtDateKo,
@@ -48,7 +49,7 @@ import {
   type Period,
 } from "@/lib/format";
 import type { EquipmentRow, LectureRow, MasterData } from "@/lib/types";
-import { deleteLecture, toggleLecture } from "./actions";
+import { bulkToggleLectures, deleteLecture, toggleLecture } from "./actions";
 import { LectureForm, type FormMode } from "./LectureForm";
 import { LectureCalendar } from "./LectureCalendar";
 
@@ -90,6 +91,7 @@ export function LecturesView({
   master,
   lockedMonths,
   canEdit,
+  lockBypass,
   initial,
   initialView,
   openNew,
@@ -101,6 +103,8 @@ export function LecturesView({
   master: MasterData;
   lockedMonths: string[];
   canEdit: boolean;
+  /** 관리자 — 정산 확정된 달도 수정 가능 */
+  lockBypass: boolean;
   initial: InitialFilters;
   initialView: "list" | "calendar";
   openNew: boolean;
@@ -122,8 +126,11 @@ export function LecturesView({
     [master.payTypes],
   );
   /** 월 모드: 그 달 잠김 여부 / 기간 모드: 등록 폼은 열되 잠긴 달 행만 잠금 */
-  const locked = period.mode === "month" && lockedSet.has(ym);
-  const isLockedRow = (l: LectureRow) => lockedSet.has(l.date.slice(0, 7));
+  // 정산 확정된 달은 관리자(lockBypass)만 수정 가능 — 그 외 계정은 등록·수정·삭제·완료·지급 전부 잠김
+  const monthLocked = period.mode === "month" && lockedSet.has(ym);
+  const locked = monthLocked && !lockBypass;
+  const isLockedRow = (l: LectureRow) =>
+    !lockBypass && lockedSet.has(l.date.slice(0, 7));
   // ---- 화면 상태: 목록/달력, 필터, 열려 있는 서랍(등록/수정/복제), 진행 중인 저장 표시 ----
   const [view, setView] = useState<"list" | "calendar">(initialView);
   const [filters, setFilters] = useState<Filters>({
@@ -294,6 +301,30 @@ export function LecturesView({
       if (!r.ok) toast(r.error, "error");
     });
   };
+  // 날짜 묶음 일괄 완료/지급: 그 날짜의 강의를 한 번에 체크·해제 (지급 체크는 지급 대상만 서버에서 처리)
+  const runBulk = (
+    date: string,
+    targets: LectureRow[],
+    field: "isDone" | "isPaid",
+    value: boolean,
+  ) => {
+    const ids = targets.filter((l) => l[field] !== value).map((l) => l.id);
+    if (!ids.length) return;
+    setBusyIds((s) => new Set([...s, ...ids]));
+    startTransition(async () => {
+      const r = await bulkToggleLectures(ids, field, value);
+      setBusyIds((s) => {
+        const n = new Set(s);
+        ids.forEach((i) => n.delete(i));
+        return n;
+      });
+      if (r.ok)
+        toast(
+          `${fmtDateKo(date)} · ${r.data?.count ?? 0}건 ${field === "isDone" ? "완료" : "지급"} ${value ? "체크" : "해제"}했어요`,
+        );
+      else toast(r.error, "error");
+    });
+  };
   // 삭제 (ConfirmButton 이 2단계 확인을 거친 뒤 호출)
   const runDelete = (l: LectureRow) => {
     startTransition(async () => {
@@ -314,20 +345,32 @@ export function LecturesView({
 
   return (
     <div>
-      {locked && (
+      {monthLocked && (
         <div className="no-print mb-3 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
-          <Lock size={14} /> 이 달은 정산 확정(잠금) 상태입니다. 강의
-          등록·수정·삭제·지급 변경을 하려면{" "}
-          <Link href={`/settlement?ym=${ym}`} className="underline">
-            정산 화면
-          </Link>
-          에서 잠금을 해제하세요.
+          <Lock size={14} className="shrink-0" />
+          {lockBypass ? (
+            <span>
+              이 달은 정산 확정(잠금) 상태입니다. 관리자 계정이라 수정할 수
+              있으며, 변경 내용은 이력에 남습니다.
+            </span>
+          ) : (
+            <span>
+              이 달은 정산 확정(잠금) 상태입니다. 강의 등록·수정·삭제와
+              완료·지급 변경은 관리자만 할 수 있습니다.
+            </span>
+          )}
         </div>
       )}
       {period.mode === "range" && lockedMonths.length > 0 && (
         <div className="no-print mb-3 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
-          <Lock size={14} /> 이 기간 중 {lockedMonths.map(fmtYm).join(", ")}은
-          정산 확정(잠금) 상태라 해당 달의 강의는 변경할 수 없습니다.
+          <Lock size={14} className="shrink-0" />
+          <span>
+            이 기간 중 {lockedMonths.map(fmtYm).join(", ")}은 정산 확정(잠금)
+            상태
+            {lockBypass
+              ? "입니다. 관리자 계정이라 수정할 수 있습니다."
+              : "라 해당 달의 강의는 관리자만 변경할 수 있습니다."}
+          </span>
         </div>
       )}
       <SummaryStrip
@@ -636,9 +679,20 @@ export function LecturesView({
                     }),
                     { s: 0, n: 0, t: 0 },
                   );
+                  // 날짜 전체 체크 상태: 완료는 그 날짜 전 강의, 지급은 지급 대상(기관지급·0원 제외) 기준
+                  const doneAll = rows.every((l) => l.isDone);
+                  const doneSome = rows.some((l) => l.isDone);
+                  const payRows = rows.filter((l) => isPayable(l));
+                  const paidAll =
+                    payRows.length > 0 && payRows.every((l) => l.isPaid);
+                  const paidSome = payRows.some((l) => l.isPaid);
+                  const groupOff =
+                    !canEdit ||
+                    isLockedRow(rows[0]) ||
+                    rows.some((l) => busyIds.has(l.id));
                   return [
                     <tr key={`h-${date}`} className="bg-slate-100/80">
-                      <td colSpan={14} className="!py-1.5">
+                      <td colSpan={11} className="!py-1.5">
                         <div className="flex items-center gap-3">
                           <span
                             className={`font-semibold ${weekdayClass(dow)}`}
@@ -650,20 +704,69 @@ export function LecturesView({
                             {fmtWon(sub.n)}
                             {sub.t > 0 && <> · 교통비 {fmtWon(sub.t)}</>}
                           </span>
-                          <button
-                            className="ml-auto text-[12px] text-brand-700 hover:underline"
-                            onClick={() =>
-                              setFilters({
-                                ...filters,
-                                date: filters.date === date ? null : date,
-                              })
-                            }
-                          >
-                            {filters.date === date
-                              ? "날짜 필터 해제"
-                              : "이 날짜만"}
-                          </button>
                         </div>
+                      </td>
+                      <td className="!py-1.5 text-center">
+                        {canEdit && (
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-slate-700"
+                            checked={doneAll}
+                            ref={(el) => {
+                              if (el) el.indeterminate = doneSome && !doneAll;
+                            }}
+                            disabled={groupOff}
+                            onChange={() =>
+                              runBulk(date, rows, "isDone", !doneAll)
+                            }
+                            aria-label={`${fmtDateKo(date)} 전체 완료`}
+                            title="이 날짜 강의 전체 완료 체크/해제"
+                          />
+                        )}
+                      </td>
+                      <td className="!py-1.5 text-center">
+                        {canEdit && (
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-slate-700"
+                            checked={paidAll}
+                            ref={(el) => {
+                              if (el) el.indeterminate = paidSome && !paidAll;
+                            }}
+                            disabled={groupOff || payRows.length === 0}
+                            onChange={() =>
+                              runBulk(
+                                date,
+                                paidAll
+                                  ? rows.filter((l) => l.isPaid)
+                                  : payRows,
+                                "isPaid",
+                                !paidAll,
+                              )
+                            }
+                            aria-label={`${fmtDateKo(date)} 전체 지급`}
+                            title={
+                              payRows.length === 0
+                                ? "이 날짜에는 지급 대상 강의가 없습니다"
+                                : "이 날짜 지급 대상 전체 지급 체크/해제 (기관지급·세후 0원 제외)"
+                            }
+                          />
+                        )}
+                      </td>
+                      <td className="!py-1.5 text-right whitespace-nowrap">
+                        <button
+                          className="text-[12px] text-brand-700 hover:underline"
+                          onClick={() =>
+                            setFilters({
+                              ...filters,
+                              date: filters.date === date ? null : date,
+                            })
+                          }
+                        >
+                          {filters.date === date
+                            ? "날짜 필터 해제"
+                            : "이 날짜만"}
+                        </button>
                       </td>
                     </tr>,
                     ...rows.map((l) => {
@@ -802,6 +905,12 @@ export function LecturesView({
                           </td>
                           <td className="num text-slate-600">
                             {fmtWon(l.unitPrice)}
+                            {l.unitPriceAfter != null && (
+                              <div className="text-[10px] leading-tight whitespace-nowrap text-slate-400">
+                                {(l.tierLimit ?? 2) + 1}차시~{" "}
+                                {fmtWon(l.unitPriceAfter)}
+                              </div>
+                            )}
                           </td>
                           <td className="num">{fmtWon(l.grossAmount)}</td>
                           <td className="num font-medium">
@@ -816,7 +925,24 @@ export function LecturesView({
                           </td>
                           <td className="num text-slate-600">
                             {l.travelFee ? (
-                              fmtWon(l.travelFee)
+                              <>
+                                {fmtWon(l.travelFee)}
+                                {travelNote(
+                                  l.travelFee,
+                                  l.taxType,
+                                  l.date,
+                                  l.travelType,
+                                ) && (
+                                  <div className="text-[10px] leading-tight whitespace-nowrap text-slate-400">
+                                    {travelNote(
+                                      l.travelFee,
+                                      l.taxType,
+                                      l.date,
+                                      l.travelType,
+                                    )}
+                                  </div>
+                                )}
+                              </>
                             ) : (
                               <span className="text-slate-300">-</span>
                             )}
@@ -826,7 +952,7 @@ export function LecturesView({
                               type="checkbox"
                               className="h-4 w-4 accent-brand-600"
                               checked={l.isDone}
-                              disabled={!canEdit || busy}
+                              disabled={!canEdit || busy || isLockedRow(l)}
                               onChange={(e) =>
                                 runToggle(l, "isDone", e.target.checked)
                               }
