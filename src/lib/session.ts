@@ -35,19 +35,21 @@ export function canOverrideLock(role: Role): boolean {
   return role === "admin";
 }
 
-const LOCAL_ROLE = (process.env.LOCAL_ROLE as Role) || "admin"; // 개발용: LOCAL_ROLE=viewer 로 조회 전용 화면 미리보기
-const LOCAL_USER: CurrentUser = {
-  email: "local@example.dev",
-  name: "로컬 관리자",
-  role: LOCAL_ROLE,
-};
+/** 개발·테스트용 로컬 계정. LOCAL_ROLE=staff|viewer 로 다른 권한 화면을 미리 볼 수 있다 (호출 시점에 읽어 테스트에서 바꿔가며 검증) */
+function localUser(): CurrentUser {
+  return {
+    email: "local@example.dev",
+    name: "로컬 관리자",
+    role: (process.env.LOCAL_ROLE as Role) || "admin",
+  };
+}
 
 /**
  * 현재 로그인 사용자. 세션(JWT)의 이메일을 users 테이블과 매 요청 대조해서
  * 비활성화·권한 변경이 다음 요청부터 바로 반영되게 한다.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  if (AUTH_DISABLED) return LOCAL_USER;
+  if (AUTH_DISABLED) return localUser();
   const session = await auth();
   const email = session?.user?.email?.toLowerCase();
   if (!email) return null;
