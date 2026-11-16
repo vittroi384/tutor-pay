@@ -1,8 +1,9 @@
 /**
- * 서버 액션 통합 테스트 (실제 DB 사용, 마지막에 만든 데이터는 정리)
+ * 서버 액션 통합 테스트 (시드를 적재한 로컬 DB 전용 — 정리 단계가 감사로그를 삭제하므로 운영 DB 금지)
  *   AUTH_DISABLED=true DATABASE_URL=... npx tsx -r ./scripts/test/shim.cjs scripts/test/actions.test.ts
  */
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { lectureWarnings, travelNetOf } from "../../src/lib/calc";
 import { and, eq, like, sql, desc } from "drizzle-orm";
 import { db } from "../../src/db";
@@ -146,7 +147,7 @@ async function main() {
     travelFee: 0,
     institutionId: org,
     institutionName: null,
-    content: "투닝",
+    content: "로봇", // 공개 시드의 별칭 (data/tutorpay-seed.json contents[].aliases)
     payType: "관외",
     isDone: false,
     isPaid: false,
@@ -172,8 +173,8 @@ async function main() {
   assert.equal(rA.netAmount, Math.floor((160000 * 967) / 1000)); // 154,720
   assert.equal(rB.unitPrice, 0, "B등급 단가는 0원 (미사용)");
   assert.equal(rB.netAmount, 0);
-  assert.equal(rA.content, "AI 투닝", "별칭 '투닝' → 표준명 정규화");
-  assert.equal(rA.contentRaw, "투닝");
+  assert.equal(rA.content, "로봇코딩", "별칭 '로봇' → 표준명 정규화");
+  assert.equal(rA.contentRaw, "로봇");
 
   // 검증 규칙
   fail(
@@ -1268,7 +1269,7 @@ async function main() {
   );
   assert.equal(renamed.renamed, 1);
   const tuning = await db.query.contents.findFirst({
-    where: eq(contents.name, "AI 투닝"),
+    where: eq(contents.name, "로봇코딩"),
   });
   const m2 = ok(await mergeContents(newContent!.id, tuning!.id), "콘텐츠 병합");
   assert.equal(m2.moved, 1);
@@ -1278,7 +1279,7 @@ async function main() {
       .from(lectures)
       .where(and(eq(lectures.note, tag), eq(lectures.payType, "수동기입")))
   )[0];
-  assert.equal(afterMerge.content, "AI 투닝");
+  assert.equal(afterMerge.content, "로봇코딩");
 
   // 정리
   for (const r of await db
@@ -1309,7 +1310,12 @@ async function main() {
   const left = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(lectures);
-  assert.equal(left[0].n, 558, "원본 558건 유지");
+  const seedLectures = (
+    JSON.parse(fs.readFileSync("data/tutorpay-seed.json", "utf8")) as {
+      lectures: unknown[];
+    }
+  ).lectures.length;
+  assert.equal(left[0].n, seedLectures, `시드 원본 ${seedLectures}건 유지`);
   console.log(
     "서버 액션 통합 테스트 통과 ✓ (배정·검증·정규화·스냅샷·잠금·일괄지급·단가표버전·지급유형/등급·교구·강의연동대여·삭제복원·병합)",
   );
